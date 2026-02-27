@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Parâmetros{% endblock %}
+
+{% block content %}
+  <div class="rounded-2xl bg-white p-6 shadow-sm">
+    <h1 class="text-xl font-semibold">Parâmetros do Pipeline</h1>
+    <form method="post" class="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+
+      {% for field in ["SR","duration","f_low_woman","f_high_woman","f_low_man","f_high_man
+", "target_db"] %}
+        <div>
+          <label class="text-sm font-medium">{{ field }}</label>
+          <input name="{{ field }}" value="{{ getattr(p, field) }}"
+                 class="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
+                 required />
+        </div>
+      {% endfor %}
+
+      <div class="md:col-span-2">
+        <label class="text-sm font-medium">path_audio</label>
+        <input name="path_audio" value="{{ p.path_audio }}"
+               class="mt-1 w-full rounded-xl border px-3 py-2 text-sm" required />
+      </div>
+
+      <div class="md:col-span-2">
+        <label class="text-sm font-medium">path_demographics</label>
+        <input name="path_demographics" value="{{ p.path_demographics }}"
+               class="mt-1 w-full rounded-xl border px-3 py-2 text-sm" required />
+      </div>
+
+      <div class="md:col-span-2 flex justify-end">
+        <button class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
+          Salvar
+        </button>
+      </div>
+    </form>
+  </div>
+{% endblock %}

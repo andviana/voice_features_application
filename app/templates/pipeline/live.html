@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}Pipeline ao vivo{% endblock %}
+
+{% block content %}
+  <div class="rounded-2xl bg-white p-6 shadow-sm">
+    <div class="flex items-center justify-between gap-4">
+      <h1 class="text-xl font-semibold">
+        <div class="mt-4 rounded-2xl border bg-slate-50 p-4">
+          <div class="flex items-center justify-between">
+            <h2 class="text-sm font-semibold">Snapshot ativo (singleton)</h2>
+            <button id="btnRefreshParams"
+              class="rounded-lg border bg-white px-3 py-1 text-xs hover:bg-slate-50">
+              Atualizar
+            </button>
+          </div>
+
+          <div id="paramsGrid" class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+            <!-- preenchido via JS -->
+          </div>
+        </div>
+        Console ao vivo (SSE)
+      </h1>
+      
+      <button id="btnStart"
+        class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
+        Iniciar pipeline
+      </button>
+    </div>
+
+    <p class="mt-2 text-sm text-slate-600">
+      Cada linha que o pipeline imprimir será enviada ao navegador em tempo real.
+    </p>
+
+    <div class="mt-4 rounded-xl border bg-slate-950 p-4">
+      <pre id="logBox" class="max-h-[60vh] overflow-auto text-xs text-slate-100"></pre>
+    </div>
+  </div>
+
+  <script>
+    const logBox = document.getElementById("logBox");
+    const btn = document.getElementById("btnStart");
+
+    function appendLine(line) {
+      logBox.textContent += line + "\n";
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      logBox.textContent = "";
+      appendLine(">> iniciando...");
+
+      const res = await fetch("/pipeline/start", { method: "POST" });
+      const data = await res.json();
+      const runId = data.run_id;
+
+      appendLine(`>> run_id: ${runId}`);
+
+      const es = new EventSource(`/pipeline/stream/${runId}`);
+
+      es.onmessage = (ev) => {
+        appendLine(ev.data);
+      };
+
+      es.addEventListener("done", () => {
+        appendLine(">> pipeline finalizado");
+        es.close();
+        btn.disabled = false;
+      });
+
+      es.onerror = () => {
+        appendLine(">> erro de conexão SSE");
+        es.close();
+        btn.disabled = false;
+      };
+    });
+  </script>
+  <script>
+  const paramsGrid = document.getElementById("paramsGrid");
+  const btnRefreshParams = document.getElementById("btnRefreshParams");
+
+  function fmtUnit(key, value) {
+    if (["SR","f_low_woman","f_high_woman","f_low_man","f_high_man"].includes(key)) return `${Number(value).toFixed(2)} Hz`;
+    if (key === "duration") return `${Number(value).toFixed(3)} s`;
+    if (key === "target_db") return `${Number(value).toFixed(1)} dB`;
+    return String(value);
+  }
+
+  function renderParams(data) {
+    paramsGrid.innerHTML = "";
+    const order = ["SR","duration","f_low_woman","f_high_woman","f_low_man","f_high_man","target_db","path_audio","path_demographics"];
+    for (const key of order) {
+      const v = data[key];
+      const card = document.createElement("div");
+      card.className = "rounded-xl border bg-white p-3";
+      card.innerHTML = `
+        <div class="text-[11px] font-medium text-slate-600">${key}</div>
+        <div class="mt-1 font-mono text-xs text-slate-900 break-all">${fmtUnit(key, v)}</div>
+      `;
+      paramsGrid.appendChild(card);
+    }
+  }
+
+  async function loadParamsSnapshot() {
+    const res = await fetch("/params/snapshot");
+    if (!res.ok) return;
+    const data = await res.json();
+    renderParams(data);
+  }
+
+  btnRefreshParams?.addEventListener("click", loadParamsSnapshot);
+
+  // carrega quando a página abre
+  loadParamsSnapshot();
+</script>
+{% endblock %}

@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+{% block title %}Áudios Raw{% endblock %}
+
+{% block content %}
+  <div class="rounded-2xl bg-white p-6 shadow-sm">
+    <div class="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <h1 class="text-xl font-semibold">Áudios Raw</h1>
+        <p class="mt-1 text-sm text-slate-600">
+          Base: <code class="rounded bg-slate-100 px-2 py-0.5">{{ base }}</code>
+        </p>
+        <button
+          class="rounded-lg border px-3 py-1 hover:bg-slate-50"
+          data-group="{{ a.group }}"
+          data-filename="{{ a.filename }}"
+          onclick="startPreprocess(this)">
+          Pré-processar
+        </button>
+      </div>
+
+      <div class="flex gap-2 text-sm">
+        <span class="rounded-xl border bg-slate-50 px-3 py-1">HC_AH: <b>{{ counts["HC_AH"] }}</b></span>
+        <span class="rounded-xl border bg-slate-50 px-3 py-1">PD_AH: <b>{{ counts["PD_AH"] }}</b></span>
+      </div>
+    </div>
+
+    <div class="mt-4 overflow-hidden rounded-xl border">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-left">
+          <tr class="[&>th]:px-4 [&>th]:py-3">
+            <th>Grupo</th>
+            <th>Arquivo</th>
+            <th>Duração</th>
+            <th>SR</th>
+            <th>Canais</th>
+            <th>Tamanho</th>
+            <th>Modificado</th>
+            <th class="text-right">Ações</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y">
+          {% for a in items %}
+            <tr class="[&>td]:px-4 [&>td]:py-3 align-top">
+              <td class="font-medium">{{ a.group }}</td>
+              <td class="font-mono text-xs">{{ a.filename }}</td>
+              <td>{{ "%.2f"|format(a.duration_sec) }}s</td>
+              <td>{{ a.sample_rate_hz }}</td>
+              <td>{{ a.n_channels }}</td>
+              <td>{{ (a.size_bytes / 1024)|round(1) }} KB</td>
+              <td class="text-xs text-slate-600">{{ a.modified_at }}</td>
+              <td class="text-right">
+                <div class="flex flex-col items-end gap-2">
+                  <a class="rounded-lg border px-3 py-1 hover:bg-slate-50"
+                     href="{{ url_for('audio_raw.audio_info', group=a.group, filename=a.filename) }}">
+                    Info
+                  </a>
+                  <button
+                      class="rounded-lg border px-3 py-1 hover:bg-slate-50"
+                      data-group="{{ a.group }}"
+                      data-filename="{{ a.filename }}"
+                      onclick="openInfoModal(this)">
+                      Modal
+                    </button>
+
+                  <audio controls preload="none" class="h-8 w-64">
+                    <source src="{{ url_for('audio_raw.play_audio', group=a.group, filename=a.filename) }}" type="audio/wav" />
+                    Seu navegador não suporta áudio.
+                  </audio>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+
+  <!-- MODAL -->
+  <div id="infoModal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/40" onclick="closeInfoModal()"></div>
+
+    <div class="relative mx-auto mt-16 w-[min(900px,92vw)] rounded-2xl bg-white shadow-xl">
+      <div class="flex items-center justify-between border-b p-4">
+        <div>
+          <h2 class="text-lg font-semibold">Info do áudio</h2>
+          <p id="modalSubtitle" class="mt-0.5 text-xs text-slate-600 font-mono"></p>
+        </div>
+        <button class="rounded-lg border px-3 py-1 text-sm hover:bg-slate-50" onclick="closeInfoModal()">
+          Fechar
+        </button>
+      </div>
+
+      <div class="p-4">
+        <div class="rounded-xl border bg-slate-950 p-3">
+          <audio id="modalPlayer" controls class="w-full">
+            <source id="modalPlayerSrc" src="" type="audio/wav" />
+          </audio>
+        </div>
+
+        <div id="modalLoading" class="mt-4 text-sm text-slate-600">Carregando...</div>
+
+        <div id="modalGrid" class="mt-4 hidden grid grid-cols-1 gap-3 md:grid-cols-2">
+          <!-- preenchido via JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+
+<!-- modal para mostrar logs em tempo real -->
+ <div id="ppModal" class="fixed inset-0 z-50 hidden">
+  <div class="absolute inset-0 bg-black/40" onclick="closePPModal()"></div>
+
+  <div class="relative mx-auto mt-16 w-[min(900px,92vw)] rounded-2xl bg-white shadow-xl">
+    <div class="flex items-center justify-between border-b p-4">
+      <div>
+        <h2 class="text-lg font-semibold">Pré-processamento — logs ao vivo</h2>
+        <p id="ppSubtitle" class="mt-0.5 text-xs text-slate-600 font-mono"></p>
+      </div>
+      <button class="rounded-lg border px-3 py-1 text-sm hover:bg-slate-50" onclick="closePPModal()">
+        Fechar
+      </button>
+    </div>
+
+    <div class="p-4">
+      <div class="rounded-xl border bg-slate-950 p-4">
+        <pre id="ppLog" class="max-h-[60vh] overflow-auto text-xs text-slate-100"></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let ppES = null;
+
+  function openPPModal(title) {
+    document.getElementById("ppSubtitle").textContent = title;
+    document.getElementById("ppLog").textContent = "";
+    document.getElementById("ppModal").classList.remove("hidden");
+  }
+
+  function closePPModal() {
+    try { if (ppES) ppES.close(); } catch {}
+    ppES = null;
+    document.getElementById("ppModal").classList.add("hidden");
+  }
+
+  function appendPP(line) {
+    const box = document.getElementById("ppLog");
+    box.textContent += line + "\n";
+    box.scrollTop = box.scrollHeight;
+  }
+
+  async function startPreprocess(btn) {
+    const group = btn.dataset.group;
+    const filename = btn.dataset.filename;
+    openPPModal(`${group}/${filename}`);
+    appendPP(">> iniciando pré-processamento...");
+
+    const res = await fetch(`/audio-raw/preprocess/${encodeURIComponent(group)}/${encodeURIComponent(filename)}`, {
+      method: "POST"
+    });
+
+    if (!res.ok) {
+      appendPP(">> erro ao iniciar execução.");
+      return;
+    }
+
+    const { run_id } = await res.json();
+    appendPP(`>> run_id: ${run_id}`);
+
+    ppES = new EventSource(`/audio-raw/preprocess/stream/${run_id}`);
+
+    ppES.onmessage = (ev) => appendPP(ev.data);
+
+    ppES.addEventListener("done", () => {
+      appendPP(">> finalizado.");
+      ppES.close();
+      ppES = null;
+    });
+
+    ppES.onerror = () => {
+      appendPP(">> erro SSE / conexão interrompida.");
+      try { ppES.close(); } catch {}
+      ppES = null;
+    };
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !document.getElementById("ppModal").classList.contains("hidden")) {
+      closePPModal();
+    }
+  });
+</script>
+
+
+<!-- script para o preenchimento de dados do modal de info -->
+  <script>
+    const modal = document.getElementById("infoModal");
+    const modalGrid = document.getElementById("modalGrid");
+    const modalLoading = document.getElementById("modalLoading");
+    const modalSubtitle = document.getElementById("modalSubtitle");
+
+    const modalPlayer = document.getElementById("modalPlayer");
+    const modalPlayerSrc = document.getElementById("modalPlayerSrc");
+
+    function openInfoModal(btn) {
+      const group = btn.dataset.group;
+      const filename = btn.dataset.filename;
+
+      modal.classList.remove("hidden");
+      modalLoading.classList.remove("hidden");
+      modalGrid.classList.add("hidden");
+      modalGrid.innerHTML = "";
+      modalSubtitle.textContent = `${group}/${filename}`;
+
+      // seta player
+      const playUrl = `/audio-raw/play/${encodeURIComponent(group)}/${encodeURIComponent(filename)}`;
+      modalPlayerSrc.src = playUrl;
+      modalPlayer.load();
+
+      // busca JSON com props
+      const infoUrl = `/audio-raw/info/${encodeURIComponent(group)}/${encodeURIComponent(filename)}`;
+      fetch(infoUrl)
+        .then(r => {
+          if (!r.ok) throw new Error("Falha ao carregar info");
+          return r.json();
+        })
+        .then(data => {
+          modalLoading.classList.add("hidden");
+          modalGrid.classList.remove("hidden");
+
+          // Render cards
+          for (const [k, v] of Object.entries(data)) {
+            const card = document.createElement("div");
+            card.className = "rounded-xl border bg-slate-50 p-3";
+
+            const kk = document.createElement("div");
+            kk.className = "text-xs font-medium text-slate-600";
+            kk.textContent = k;
+
+            const vv = document.createElement("div");
+            vv.className = "mt-1 font-mono text-xs text-slate-900 break-all";
+            vv.textContent = String(v);
+
+            card.appendChild(kk);
+            card.appendChild(vv);
+            modalGrid.appendChild(card);
+          }
+        })
+        .catch(err => {
+          modalLoading.textContent = "Erro ao carregar informações do áudio.";
+          console.error(err);
+        });
+    }
+
+    function closeInfoModal() {
+      // pausa áudio
+      try { modalPlayer.pause(); } catch {}
+      modal.classList.add("hidden");
+    }
+
+    // ESC fecha
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !modal.classList.contains("hidden")) closeInfoModal();
+    });
+  </script>
+
+{% endblock %}

@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="pt-br">
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{% block title %}Voice Features{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+
+  <body class="min-h-screen bg-slate-50 text-slate-900">
+    <header class="border-b bg-white">
+      <div class="mx-auto flex max-w-5xl items-center justify-between p-4">
+        <a class="font-semibold" href="{{ url_for('main.index') }}">Voice Features</a>
+        <nav class="flex gap-3 text-sm">
+          <a class="hover:underline" href="/params">Parâmetros</a>
+          <a class="hover:underline" href="/params/view">Ver Parâmetros</a>
+          <a class="hover:underline" href="/pipeline">Pipeline ao vivo</a>
+          <a class="hover:underline" href="/audio-raw">Áudios Raw</a>
+          <a class="hover:underline" href="/api/swagger-ui">Swagger</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="mx-auto max-w-5xl p-4">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="mb-4 space-y-2">
+            {% for category, message in messages %}
+              <div class="rounded-lg border p-3 text-sm
+                          {% if category == 'success' %}border-emerald-200 bg-emerald-50{% endif %}
+                          {% if category == 'error' %}border-red-200 bg-red-50{% endif %}">
+                {{ message }}
+              </div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="mt-10 border-t bg-white">
+      <div class="mx-auto max-w-5xl p-4 text-xs text-slate-500">
+        Voice Analisys - Dissertação Mestrado - PPGEE/UFPA
+      </div>
+    </footer>
+  </body>
+</html>
