@@ -36,64 +36,73 @@ flask run
 
 
 
-Vamos fazer um checklist objetivo para rodar e testar tudo, incluindo:
+## Checklist objetivo para rodar e testar tudo:
 
-Banco
+- Banco
+- Seed (só rodar se necessário)
+- Pipeline
+- SSE
+- Pré-processamento via browser
 
-Seed
-
-Pipeline
-
-SSE
-
-Pré-processamento via browser
-
-✅ 1️⃣ Criar e ativar ambiente virtual
+### ✅ 1️⃣ Criar e ativar ambiente virtual
 
 Na raiz do projeto:
-
+```bash
 python -m venv .venv
-Linux / Mac:
+# Linux / Mac:
 source .venv/bin/activate
-Windows (PowerShell):
+# Windows (PowerShell):
 .venv\Scripts\activate
-✅ 2️⃣ Instalar dependências
+```
+### ✅ 2️⃣ Instalar dependências
+```bash
 pip install -r requirements.txt
+```
 
 Se você adicionou as libs do pipeline manualmente, confirme que tem:
+`pip install librosa soundfile pandas scipy numpy`
 
-pip install librosa soundfile pandas scipy numpy
-✅ 3️⃣ Configurar variáveis de ambiente
-Linux / Mac:
+
+### ✅ 3️⃣ Configurar variáveis de ambiente
+```bash 
+# Linux / Mac:
 export FLASK_APP=wsgi.py
 export FLASK_ENV=development
-Windows PowerShell:
+# Windows PowerShell:
 $env:FLASK_APP="wsgi.py"
 $env:FLASK_ENV="development"
-✅ 4️⃣ Criar banco e tabelas (migrações)
+```
+
+### ✅ 4️⃣ Criar banco e tabelas (migrações)
 
 Se ainda não rodou:
-
+```bash 
 flask db init
 flask db migrate -m "initial"
 flask db upgrade
-
+```
 Se já tinha migrations:
-
+```bash
 flask db upgrade
-✅ 5️⃣ Rodar seed inicial
-python seeds/seed.py
+```
 
+### ✅ 5️⃣ Rodar seed inicial
+```bash
+python seeds/seed.py
+```
 Deve aparecer algo como:
 
+```
 Iniciando seed...
 Usuário admin criado com sucesso.
 Params iniciais criados.
 Seed finalizado.
-✅ 6️⃣ Estrutura de dados necessária
+```
 
+### ✅ 6️⃣ Estrutura de dados necessária
 Confirme que você tem:
 
+```
 data/
 ├── audio_raw/
 │   ├── HC_AH/
@@ -104,96 +113,107 @@ data/
 │       └── ...
 ├── metadata/
 │   └── manifest.csv
+```
 
-⚠️ O manifest.csv precisa existir em:
+> ⚠️ O manifest.csv precisa existir em:
+> `data/metadata/manifest.csv`
 
-data/metadata/manifest.csv
-✅ 7️⃣ Rodar aplicação
+
+### ✅ 7️⃣ Rodar aplicação
+```bash
 flask run
+```
 
 Saída esperada:
 
-Running on http://127.0.0.1:5000
-✅ 8️⃣ Testar no navegador
-🔹 Home
-http://127.0.0.1:5000/
-🔹 Lista de áudios
-http://127.0.0.1:5000/audio-raw
-🔹 Parâmetros (tabela técnica)
-http://127.0.0.1:5000/params/view
-🔹 Swagger
-http://127.0.0.1:5000/api/swagger-ui
-✅ 9️⃣ Testar pré-processamento (SSE)
+`Running on http://127.0.0.1:5000`
 
+### ✅ 8️⃣ Testar no navegador
+- 🔹 Home
+    - [](http://127.0.0.1:5000/)
+- 🔹 Lista de áudios
+    - [](http://127.0.0.1:5000/audio-raw)
+- 🔹 Parâmetros (tabela técnica)
+    - [](http://127.0.0.1:5000/params/view)
+- 🔹 Swagger
+    - [](http://127.0.0.1:5000/api/swagger-ui)
+
+
+### ✅ 9️⃣ Testar pré-processamento (SSE)
 Vá para:
 
-http://127.0.0.1:5000/audio-raw
+- [](http://127.0.0.1:5000/audio-raw)
 
-Clique em Pré-processar
+- Clique em Pré-processar
 
-Deve abrir o modal
+- Deve abrir o modal
 
-Os print() do pipeline devem aparecer em tempo real
+- Os print() do pipeline devem aparecer em tempo real
 
-Se quiser testar via terminal:
+- Se quiser testar via terminal:
 
-curl -X POST http://127.0.0.1:5000/audio-raw/preprocess/HC_AH/arquivo.wav
-✅ 🔎 Se der erro
-🔹 Erro de import do pacote pre_proccess
+```bash
+- [](curl -X POST http://127.0.0.1:5000/audio-raw/preprocess/HC_AH/arquivo.wav)
+```
+
+### ✅ 🔎 Se der erro
+- 🔹 Erro de import do pacote pre_proccess
 
 Verifique se:
 
+```bash
 pre_proccess/
 ├── __init__.py
 ├── pre_proccess_pipeline.py
 ├── filters.py
 ...
+```
 
-O __init__.py é obrigatório.
+O `__init__.py` é obrigatório.
 
-🔹 Erro: soundfile / libsndfile
+- 🔹 Erro: soundfile / libsndfile
 
-No Windows pode precisar:
+- No Windows pode precisar:
 
-pip install soundfile
+```pip install soundfile```
 
-No Linux:
+- No Linux:
+```sudo apt install libsndfile1 ```
 
-sudo apt install libsndfile1
-🔹 Erro SSE não atualiza
 
-Certifique-se que está rodando com:
+- 🔹 Erro SSE não atualiza
 
-FLASK_ENV=development
+- Certifique-se que está rodando com:
 
-E não usando algum proxy (nginx) sem configuração para streaming.
+```FLASK_ENV=development```
 
-🧪 Teste rápido de sanity check
+- E não usando algum proxy (nginx) sem configuração para streaming.
 
-Abra um terminal Python:
+- 🧪 Teste rápido de sanity check
 
-python
+- Abra um terminal Python:
+
+```python```
 
 E teste:
-
+```python
 from pre_proccess import pre_proccess_pipeline
 print("Import OK")
+```
 
 Se isso funcionar, o pipeline está importável.
 
-🎯 Fluxo completo esperado
+### 🎯 Fluxo completo esperado
 
-App sobe
+- App sobe
 
-Singleton carrega params
+- Singleton carrega params
 
-Você clica em pré-processar
+- Clique em pré-processar
 
-Thread inicia
+- Thread inicia
 
-Prints aparecem no modal
+- Prints aparecem no modal
 
-Arquivo processado é salvo em:
-
-data/audio_processed/<grupo>/<arquivo>.wav
+- Arquivo processado é salvo em: `data/audio_processed/<grupo>/<arquivo>.wav`
 

@@ -29,13 +29,11 @@ def create_app():
 
     # Blueprints HTML
     from .blueprints.main import bp as main_bp
-    from .blueprints.auth import bp as auth_bp
     from .blueprints.params import bp as params_bp
     from .blueprints.pipeline import bp as pipeline_bp
     from .blueprints.audio_raw import bp as audio_raw_bp
 
     app.register_blueprint(main_bp)
-    app.register_blueprint(auth_bp, url_prefix="/auth")
     app.register_blueprint(params_bp)
     app.register_blueprint(pipeline_bp)
     app.register_blueprint(audio_raw_bp)

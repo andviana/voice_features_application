@@ -21,3 +21,13 @@ def configure_logging(app) -> None:
 
     # Reduz ruído de libs
     logging.getLogger("werkzeug").setLevel(logging.INFO)
+
+    # ✅ silencia numba (responsável pelo flood que você mostrou)
+    logging.getLogger("numba").setLevel(logging.WARNING)
+    logging.getLogger("numba.core").setLevel(logging.WARNING)
+    logging.getLogger("numba.core.ssa").setLevel(logging.WARNING)
+    logging.getLogger("numba.core.byteflow").setLevel(logging.WARNING)
+
+    # (opcional) outras libs comuns de áudio que podem ficar verbosas
+    logging.getLogger("librosa").setLevel(logging.WARNING)
+    logging.getLogger("matplotlib").setLevel(logging.WARNING)

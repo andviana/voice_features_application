@@ -1,0 +1,1738 @@
+"""
+generate_feature_modules_3p5.py
+
+Creates one .py file per method listed in [3.5 Extração de Características]
+from the "Programa de Pesquisa DP" document (baseline A–G + Tsallis methods).
+
+Usage
+-----
+python generate_feature_modules_3p5.py
+
+It creates: ./dp_voice_features_3p5/*.py
+
+Environment (recommended)
+-------------------------
+python>=3.10
+pip install numpy scipy librosa praat-parselmouth
+
+Notes
+-----
+- Parselmouth (Praat) is strongly recommended for jitter/shimmer/HNR to match standard definitions.
+- All generated modules include small sanity tests and extensive comments.
+
+Signature (Space requirement)
+-----------------------------
+Prof. Dr. Bruno Duarte Gomes / Laboratório de Neurofisiologia Eduardo Oswaldo Cruz /
+Laboratório de Simulação e Biologia Computacional / Instituto de Ciências Biológicas - UFPA
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+import textwrap
+
+
+SIGNATURE = (
+    "Prof. Dr. Bruno Duarte Gomes / Laboratório de Neurofisiologia Eduardo Oswaldo Cruz / "
+    "Laboratório de Simulação e Biologia Computacional / Instituto de Ciências Biológicas - UFPA"
+)
+
+
+def _header(module_title: str, deps: str) -> str:
+    return textwrap.dedent(
+        f"""\
+        \"\"\"
+        {module_title}
+
+        Research project context
+        ------------------------
+        Parkinson’s disease (PD) voice analysis feature extraction as described in the DP research plan.
+
+        Design goals
+        ------------
+        - Deterministic, reproducible feature extraction for ML / Deep Learning pipelines.
+        - Stable feature names (dict outputs) to support dataset building and model comparisons.
+        - Explicit edge-case behavior (empty signals, constant signals, unvoiced frames).
+
+        Dependencies
+        ------------
+        {deps}
+
+        \"\"\"
+        """
+    )
+
+
+def _signature_block() -> str:
+    return textwrap.dedent(
+        f"""
+
+        # -----------------------------------------------------------------------------
+        # Code signature (required by Space instructions)
+        # {SIGNATURE}
+        # -----------------------------------------------------------------------------
+        """
+    )
+
+
+def _write(out_dir: Path, filename: str, content: str) -> None:
+    out_dir.mkdir(parents=True, exist_ok=True)
+    (out_dir / filename).write_text(content, encoding="utf-8")
+
+
+def main() -> None:
+    out_dir = Path("dp_voice_features_3p5")
+
+    # -------------------------------------------------------------------------
+    # A) F0 features
+    # -------------------------------------------------------------------------
+    _write(
+        out_dir,
+        "f0_features.py",
+        _header(
+            "F0 (Fundamental Frequency) Features",
+            "- numpy\n- librosa (recommended)\n- praat-parselmouth (optional; preferred if installed)",
+        )
+        + textwrap.dedent(
+            """\
+            from __future__ import annotations
+
+            from dataclasses import dataclass
+            from typing import Dict, Tuple
+
+            import numpy as np
+
+
+            # =========================================================================
+            # Why F0 matters in PD voice analysis
+            # =========================================================================
+            # In sustained vowel phonation, PD-related dysphonia can manifest as altered
+            # pitch stability and control. Summary statistics of F0 are standard baseline
+            # features in many voice-PD pipelines and are explicitly listed in the plan.
+
+
+            @dataclass(frozen=True)
+            class F0Stats:
+                \"\"\"Summary statistics for the F0 track.\"\"\"
+
+                mean_hz: float
+                std_hz: float
+                min_hz: float
+                max_hz: float
+                cv: float  # coefficient of variation = std/mean
+
+
+            def _safe_stats(x: np.ndarray) -> Tuple[float, float, float, float]:
+                \"\"\"mean/std/min/max that tolerates NaNs.\"\"\"
+                x = np.asarray(x, dtype=float).flatten()
+                x = x[np.isfinite(x)]
+                if x.size == 0:
+                    return float("nan"), float("nan"), float("nan"), float("nan")
+                mean = float(np.mean(x))
+                std = float(np.std(x, ddof=1) if x.size > 1 else 0.0)
+                return mean, std, float(np.min(x)), float(np.max(x))
+
+
+            def estimate_f0_track(
+                y: np.ndarray,
+                sr: int,
+                fmin_hz: float = 75.0,
+                fmax_hz: float = 300.0,
+                frame_length: int = 2048,
+                hop_length: int = 256,
+                prefer_parselmouth: bool = True,
+                librosa_method: str = "yin",
+            ) -> Tuple[np.ndarray, np.ndarray]:
+                \"\"\"Estimate an F0 track in Hz, with frame-center times.
+
+                Strategy
+                --------
+                1) If praat-parselmouth is available and prefer_parselmouth=True:
+                   use Praat pitch tracking (aligned with clinical voice metrics).
+                2) Otherwise: use librosa (yin or pyin).
+
+                Returns
+                -------
+                f0_hz: np.ndarray
+                    Shape (n_frames,), NaN for unvoiced frames (Praat gives 0 Hz).
+                times_s: np.ndarray
+                    Shape (n_frames,), frame-center times in seconds.
+                \"\"\"
+
+                y = np.asarray(y, dtype=float).flatten()
+                if y.size == 0:
+                    return np.array([], dtype=float), np.array([], dtype=float)
+
+                # ---- Option 1: Praat/Parselmouth ----
+                if prefer_parselmouth:
+                    try:
+                        import parselmouth  # type: ignore
+
+                        snd = parselmouth.Sound(y, sampling_frequency=sr)
+                        time_step = hop_length / float(sr)
+                        pitch = snd.to_pitch(
+                            time_step=time_step,
+                            pitch_floor=fmin_hz,
+                            pitch_ceiling=fmax_hz,
+                        )
+                        f0 = pitch.selected_array["frequency"].astype(float)
+                        f0 = np.where(f0 > 0.0, f0, np.nan)  # Praat: 0 => unvoiced
+                        times = pitch.xs().astype(float)
+                        return f0, times
+                    except Exception:
+                        # Fall back to librosa
+                        pass
+
+                # ---- Option 2: librosa ----
+                try:
+                    import librosa
+
+                    if librosa_method.lower() == "pyin":
+                        f0, _, _ = librosa.pyin(
+                            y,
+                            fmin=fmin_hz,
+                            fmax=fmax_hz,
+                            sr=sr,
+                            frame_length=frame_length,
+                            hop_length=hop_length,
+                        )
+                        f0 = np.asarray(f0, dtype=float)
+                    else:
+                        f0 = librosa.yin(
+                            y,
+                            fmin=fmin_hz,
+                            fmax=fmax_hz,
+                            sr=sr,
+                            frame_length=frame_length,
+                            hop_length=hop_length,
+                        ).astype(float)
+
+                    times = librosa.frames_to_time(
+                        np.arange(f0.size),
+                        sr=sr,
+                        hop_length=hop_length,
+                    ).astype(float)
+                    return f0, times
+
+                except Exception as exc:
+                    raise RuntimeError(
+                        "F0 estimation failed. Install librosa or praat-parselmouth:\n"
+                        "  pip install librosa praat-parselmouth"
+                    ) from exc
+
+
+            def extract_f0_features(
+                y: np.ndarray,
+                sr: int,
+                fmin_hz: float = 75.0,
+                fmax_hz: float = 300.0,
+                **kwargs,
+            ) -> Tuple[F0Stats, Dict[str, float]]:
+                \"\"\"Compute baseline F0 summary features.\"\"\"
+
+                f0, _ = estimate_f0_track(
+                    y=y,
+                    sr=sr,
+                    fmin_hz=fmin_hz,
+                    fmax_hz=fmax_hz,
+                    **kwargs,
+                )
+                mu, sd, mn, mx = _safe_stats(f0)
+                cv = float(sd / mu) if np.isfinite(mu) and abs(mu) > 0 else float("nan")
+
+                stats = F0Stats(mean_hz=mu, std_hz=sd, min_hz=mn, max_hz=mx, cv=cv)
+                features = {
+                    "f0_mean_hz": stats.mean_hz,
+                    "f0_std_hz": stats.std_hz,
+                    "f0_min_hz": stats.min_hz,
+                    "f0_max_hz": stats.max_hz,
+                    "f0_cv": stats.cv,
+                }
+                return stats, features
+
+
+            def _sanity_test() -> None:
+                \"\"\"Basic check on a clean sinusoid.\"\"\"
+                sr = 16000
+                t = np.arange(int(2.0 * sr)) / sr
+                y = 0.2 * np.sin(2.0 * np.pi * 150.0 * t)
+
+                stats, d = extract_f0_features(y, sr, prefer_parselmouth=False)
+                assert set(d.keys()) == {
+                    "f0_mean_hz", "f0_std_hz", "f0_min_hz", "f0_max_hz", "f0_cv"
+                }
+                assert np.isfinite(stats.mean_hz)
+                assert abs(stats.mean_hz - 150.0) < 10.0
+
+
+            if __name__ == "__main__":
+                _sanity_test()
+                print("OK - f0_features.py")
+            """
+        )
+        + _signature_block(),
+    )
+
+    # -------------------------------------------------------------------------
+    # B) Formants (F1-F4) via LPC (order 12 in the plan)
+    # -------------------------------------------------------------------------
+    _write(
+        out_dir,
+        "formants_lpc.py",
+        _header("Formants F1–F4 via LPC (order 12)", "- numpy\n- scipy")
+        + textwrap.dedent(
+            """\
+            from __future__ import annotations
+
+            from dataclasses import dataclass
+            from typing import Dict, Tuple
+
+            import numpy as np
+
+
+            # =========================================================================
+            # Formants via LPC
+            # =========================================================================
+            # The plan specifies LPC order 12, 25 ms frames, 10 ms hop, and reporting
+            # mean/std for each formant (F1–F4).
+            #
+            # Important: Formant estimation is best for voiced speech with rich harmonic
+            # content; on near-sinusoidal signals it can become ill-posed. We therefore
+            # return NaNs gracefully if estimation fails.
+
+
+            @dataclass(frozen=True)
+            class FormantStats:
+                f1_mean_hz: float
+                f1_std_hz: float
+                f2_mean_hz: float
+                f2_std_hz: float
+                f3_mean_hz: float
+                f3_std_hz: float
+                f4_mean_hz: float
+                f4_std_hz: float
+
+
+            def _frame_signal(y: np.ndarray, frame_length: int, hop_length: int) -> np.ndarray:
+                \"\"\"Return frames with shape (n_frames, frame_length).\"\"\"
+                y = np.asarray(y, dtype=float).flatten()
+                if y.size < frame_length:
+                    y = np.pad(y, (0, frame_length - y.size))
+                n_frames = 1 + (y.size - frame_length) // hop_length
+                frames = np.lib.stride_tricks.as_strided(
+                    y,
+                    shape=(n_frames, frame_length),
+                    strides=(y.strides[0] * hop_length, y.strides[0]),
+                    writeable=False,
+                ).copy()
+                return frames
+
+
+            def _lpc_levinson_durbin(x: np.ndarray, order: int) -> np.ndarray:
+                \"\"\"LPC via autocorrelation + Levinson-Durbin recursion.
+
+                Returns a LPC polynomial A(z) with a[0]=1.
+                \"\"\"
+                x = np.asarray(x, dtype=float)
+                x = x - np.mean(x)
+
+                # Biased autocorrelation for stability
+                r_full = np.correlate(x, x, mode="full")
+                mid = r_full.size // 2
+                r = r_full[mid : mid + order + 1].astype(float)
+
+                a = np.zeros(order + 1, dtype=float)
+                a[0] = 1.0
+                e = float(r[0])
+
+                if e <= 0.0:
+                    return a
+
+                for i in range(1, order + 1):
+                    acc = 0.0
+                    for j in range(1, i):
+                        acc += a[j] * r[i - j]
+                    k = -(r[i] + acc) / e
+
+                    a_prev = a.copy()
+                    a[i] = k
+                    for j in range(1, i):
+                        a[j] = a_prev[j] + k * a_prev[i - j]
+
+                    e *= 1.0 - k * k
+                    if e <= 1e-12:
+                        break
+
+                return a
+
+
+            def _formants_from_lpc(a: np.ndarray, sr: int) -> np.ndarray:
+                \"\"\"Extract formant frequencies from LPC roots (Hz).
+
+                Heuristics:
+                - Keep roots with Im>=0 (avoid duplicates).
+                - Convert angle to frequency.
+                - Filter to speech-relevant range and reasonable bandwidths.
+                \"\"\"
+                a = np.asarray(a, dtype=float).flatten()
+                if a.size < 2:
+                    return np.array([], dtype=float)
+
+                roots = np.roots(a)
+                roots = roots[np.imag(roots) >= 0]
+
+                angles = np.angle(roots)
+                freqs = angles * (sr / (2.0 * np.pi))
+
+                mags = np.abs(roots)
+                bandwidths = -0.5 * (sr / (2.0 * np.pi)) * np.log(np.clip(mags, 1e-8, 1.0))
+
+                valid = (freqs > 80.0) & (freqs < 5000.0) & (bandwidths < 400.0)
+                freqs = np.sort(freqs[valid])
+                return freqs.astype(float)
+
+
+            def extract_formant_features(
+                y: np.ndarray,
+                sr: int,
+                lpc_order: int = 12,
+                frame_length_ms: float = 25.0,
+                hop_length_ms: float = 10.0,
+                pre_emphasis: float = 0.97,
+            ) -> Tuple[FormantStats, Dict[str, float]]:
+                \"\"\"Compute mean/std of F1–F4 across frames.\"\"\"
+                y = np.asarray(y, dtype=float).flatten()
+                if y.size == 0:
+                    stats = FormantStats(*([float("nan")] * 8))
+                    return stats, _as_dict(stats)
+
+                # Pre-emphasis: y[t] - a*y[t-1]
+                y_pe = np.append(y[0], y[1:] - pre_emphasis * y[:-1])
+
+                frame_length = max(32, int(round(frame_length_ms * 1e-3 * sr)))
+                hop_length = max(1, int(round(hop_length_ms * 1e-3 * sr)))
+
+                frames = _frame_signal(y_pe, frame_length=frame_length, hop_length=hop_length)
+                window = np.hamming(frame_length).astype(float)
+
+                f1, f2, f3, f4 = [], [], [], []
+                for fr in frames:
+                    frw = fr * window
+                    a = _lpc_levinson_durbin(frw, order=lpc_order)
+                    formants = _formants_from_lpc(a, sr=sr)
+
+                    if formants.size >= 1:
+                        f1.append(formants[0])
+                    if formants.size >= 2:
+                        f2.append(formants[1])
+                    if formants.size >= 3:
+                        f3.append(formants[2])
+                    if formants.size >= 4:
+                        f4.append(formants[3])
+
+                def _ms(v):
+                    v = np.asarray(v, dtype=float)
+                    v = v[np.isfinite(v)]
+                    if v.size == 0:
+                        return float("nan"), float("nan")
+                    mean = float(np.mean(v))
+                    std = float(np.std(v, ddof=1) if v.size > 1 else 0.0)
+                    return mean, std
+
+                f1m, f1s = _ms(f1)
+                f2m, f2s = _ms(f2)
+                f3m, f3s = _ms(f3)
+                f4m, f4s = _ms(f4)
+
+                stats = FormantStats(f1m, f1s, f2m, f2s, f3m, f3s, f4m, f4s)
+                return stats, _as_dict(stats)
+
+
+            def _as_dict(stats: FormantStats) -> Dict[str, float]:
+                return {
+                    "f1_mean_hz": stats.f1_mean_hz,
+                    "f1_std_hz": stats.f1_std_hz,
+                    "f2_mean_hz": stats.f2_mean_hz,
+                    "f2_std_hz": stats.f2_std_hz,
+                    "f3_mean_hz": stats.f3_mean_hz,
+                    "f3_std_hz": stats.f3_std_hz,
+                    "f4_mean_hz": stats.f4_mean_hz,
+                    "f4_std_hz": stats.f4_std_hz,
+                }
+
+
+            def _sanity_test() -> None:
+                sr = 16000
+                t = np.arange(int(1.0 * sr)) / sr
+                y = 0.2 * np.sin(2.0 * np.pi * 220.0 * t)
+
+                stats, d = extract_formant_features(y, sr)
+                assert set(d.keys()) == {
+                    "f1_mean_hz", "f1_std_hz", "f2_mean_hz", "f2_std_hz",
+                    "f3_mean_hz", "f3_std_hz", "f4_mean_hz", "f4_std_hz",
+                }
+
+
+            if __name__ == "__main__":
+                _sanity_test()
+                print("OK - formants_lpc.py")
+            """
+        )
+        + _signature_block(),
+    )
+
+    # -------------------------------------------------------------------------
+    # C) Jitter via Praat/Parselmouth (standard definitions)
+    # -------------------------------------------------------------------------
+    _write(
+        out_dir,
+        "jitter_features.py",
+        _header(
+            "Jitter features (local, RAP, PPQ5) via Praat",
+            "- numpy\n- praat-parselmouth (strongly recommended)",
+        )
+        + textwrap.dedent(
+            """\
+            from __future__ import annotations
+
+            from dataclasses import dataclass
+            from typing import Dict, Tuple
+
+            import numpy as np
+
+
+            # =========================================================================
+            # Jitter: cycle-to-cycle perturbation of fundamental period
+            # =========================================================================
+            # The plan lists:
+            # - local jitter
+            # - RAP (Relative Average Perturbation; 3-period smoothing)
+            # - PPQ5 (5-point Period Perturbation Quotient)
+            #
+            # Accurate jitter measurement requires reliable cycle detection.
+            # We therefore use Praat definitions via Parselmouth, matching common practice.
+
+
+            @dataclass(frozen=True)
+            class JitterStats:
+                local: float
+                rap: float
+                ppq5: float
+
+
+            def extract_jitter_features(
+                y: np.ndarray,
+                sr: int,
+                fmin_hz: float = 75.0,
+                fmax_hz: float = 300.0,
+            ) -> Tuple[JitterStats, Dict[str, float]]:
+                y = np.asarray(y, dtype=float).flatten()
+
+                try:
+                    import parselmouth  # type: ignore
+
+                    snd = parselmouth.Sound(y, sampling_frequency=sr)
+
+                    # Convert to PointProcess for periodicity-based measures
+                    pp = parselmouth.praat.call(snd, "To PointProcess (periodic, cc)", fmin_hz, fmax_hz)
+
+                    # Standard Praat control parameters used widely in literature:
+                    max_period_factor = 1.3
+                    max_amplitude_factor = 1.6
+
+                    local = float(parselmouth.praat.call(
+                        pp, "Get jitter (local)", 0, 0, fmin_hz, fmax_hz, max_period_factor, max_amplitude_factor
+                    ))
+                    rap = float(parselmouth.praat.call(
+                        pp, "Get jitter (rap)", 0, 0, fmin_hz, fmax_hz, max_period_factor, max_amplitude_factor
+                    ))
+                    ppq5 = float(parselmouth.praat.call(
+                        pp, "Get jitter (ppq5)", 0, 0, fmin_hz, fmax_hz, max_period_factor, max_amplitude_factor
+                    ))
+
+                    stats = JitterStats(local=local, rap=rap, ppq5=ppq5)
+                    features = {
+                        "jitter_local": stats.local,
+                        "jitter_rap": stats.rap,
+                        "jitter_ppq5": stats.ppq5,
+                    }
+                    return stats, features
+
+                except Exception as exc:
+                    raise RuntimeError(
+                        "Jitter requires Praat/Parselmouth for standard definitions.\n"
+                        "Install: pip install praat-parselmouth"
+                    ) from exc
+
+
+            def _sanity_test() -> None:
+                # On a perfectly periodic sinusoid, jitter should be near 0 (numerically small).
+                sr = 16000
+                t = np.arange(int(2.0 * sr)) / sr
+                y = 0.2 * np.sin(2.0 * np.pi * 150.0 * t)
+
+                try:
+                    stats, d = extract_jitter_features(y, sr)
+                    assert set(d.keys()) == {"jitter_local", "jitter_rap", "jitter_ppq5"}
+                    assert np.isfinite(stats.local)
+                except RuntimeError:
+                    # Expected if Parselmouth not installed in the environment.
+                    pass
+
+
+            if __name__ == "__main__":
+                _sanity_test()
+                print("OK - jitter_features.py")
+            """
+        )
+        + _signature_block(),
+    )
+
+    # -------------------------------------------------------------------------
+    # D) Shimmer via Praat/Parselmouth
+    # -------------------------------------------------------------------------
+    _write(
+        out_dir,
+        "shimmer_features.py",
+        _header(
+            "Shimmer features (local, APQ3, APQ5, APQ11) via Praat",
+            "- numpy\n- praat-parselmouth (strongly recommended)",
+        )
+        + textwrap.dedent(
+            """\
+            from __future__ import annotations
+
+            from dataclasses import dataclass
+            from typing import Dict, Tuple
+
+            import numpy as np
+
+
+            # =========================================================================
+            # Shimmer: cycle-to-cycle perturbation of amplitude
+            # =========================================================================
+            # The plan lists:
+            # - local shimmer
+            # - APQ3, APQ5, APQ11 (smoothed amplitude perturbation quotients)
+            #
+            # As with jitter, we rely on Praat's standard definitions via Parselmouth.
+
+
+            @dataclass(frozen=True)
+            class ShimmerStats:
+                local: float
+                apq3: float
+                apq5: float
+                apq11: float
+
+
+            def extract_shimmer_features(
+                y: np.ndarray,
+                sr: int,
+                fmin_hz: float = 75.0,
+                fmax_hz: float = 300.0,
+            ) -> Tuple[ShimmerStats, Dict[str, float]]:
+                y = np.asarray(y, dtype=float).flatten()
+
+                try:
+                    import parselmouth  # type: ignore
+
+                    snd = parselmouth.Sound(y, sampling_frequency=sr)
+                    pp = parselmouth.praat.call(snd, "To PointProcess (periodic, cc)", fmin_hz, fmax_hz)
+
+                    # Standard Praat control parameters:
+                    max_period_factor = 1.3
+                    max_amplitude_factor = 1.6
+                    min_amplitude = 0.03
+                    max_amplitude = 0.45
+
+                    local = float(parselmouth.praat.call(
+                        [snd, pp], "Get shimmer (local)", 0, 0, fmin_hz, fmax_hz,
+                        max_period_factor, max_amplitude_factor, min_amplitude, max_amplitude
+                    ))
+                    apq3 = float(parselmouth.praat.call(
+                        [snd, pp], "Get shimmer (apq3)", 0, 0, fmin_hz, fmax_hz,
+                        max_period_factor, max_amplitude_factor, min_amplitude, max_amplitude
+                    ))
+                    apq5 = float(parselmouth.praat.call(
+                        [snd, pp], "Get shimmer (apq5)", 0, 0, fmin_hz, fmax_hz,
+                        max_period_factor, max_amplitude_factor, min_amplitude, max_amplitude
+                    ))
+                    apq11 = float(parselmouth.praat.call(
+                        [snd, pp], "Get shimmer (apq11)", 0, 0, fmin_hz, fmax_hz,
+                        max_period_factor, max_amplitude_factor, min_amplitude, max_amplitude
+                    ))
+
+                    stats = ShimmerStats(local=local, apq3=apq3, apq5=apq5, apq11=apq11)
+                    features = {
+                        "shimmer_local": stats.local,
+                        "shimmer_apq3": stats.apq3,
+                        "shimmer_apq5": stats.apq5,
+                        "shimmer_apq11": stats.apq11,
+                    }
+                    return stats, features
+
+                except Exception as exc:
+                    raise RuntimeError(
+                        "Shimmer requires Praat/Parselmouth for standard definitions.\n"
+                        "Install: pip install praat-parselmouth"
+                    ) from exc
+
+
+            def _sanity_test() -> None:
+                sr = 16000
+                t = np.arange(int(2.0 * sr)) / sr
+                y = 0.2 * np.sin(2.0 * np.pi * 150.0 * t)
+
+                try:
+                    stats, d = extract_shimmer_features(y, sr)
+                    assert set(d.keys()) == {
+                        "shimmer_local", "shimmer_apq3", "shimmer_apq5", "shimmer_apq11"
+                    }
+                    assert np.isfinite(stats.local)
+                except RuntimeError:
+                    pass
+
+
+            if __name__ == "__main__":
+                _sanity_test()
+                print("OK - shimmer_features.py")
+            """
+        )
+        + _signature_block(),
+    )
+
+    # -------------------------------------------------------------------------
+    # E) HNR (Praat preferred, plus a clearly-marked fallback)
+    # -------------------------------------------------------------------------
+    _write(
+        out_dir,
+        "hnr_features.py",
+        _header(
+            "HNR (Harmonic-to-Noise Ratio) feature",
+            "- numpy\n- praat-parselmouth (recommended)\n- scipy (fallback approximation)",
+        )
+        + textwrap.dedent(
+            """\
+            from __future__ import annotations
+
+            from dataclasses import dataclass
+            from typing import Dict, Tuple
+
+            import numpy as np
+
+
+            @dataclass(frozen=True)
+            class HNRStats:
+                mean_db: float
+
+
+            def extract_hnr_features(
+                y: np.ndarray,
+                sr: int,
+                time_step: float = 0.01,
+                min_pitch_hz: float = 75.0,
+                silence_threshold: float = 0.1,
+                periods_per_window: float = 1.0,
+            ) -> Tuple[HNRStats, Dict[str, float]]:
+                \"\"\"Compute mean HNR in dB.
+
+                Primary implementation: Praat Harmonicity (cc) via Parselmouth.
+                Fallback: cepstrum heuristic (NOT identical to Praat; use only if needed).
+                \"\"\"
+
+                y = np.asarray(y, dtype=float).flatten()
+
+                # ---- Preferred: Praat/Parselmouth ----
+                try:
+                    import parselmouth  # type: ignore
+
+                    snd = parselmouth.Sound(y, sampling_frequency=sr)
+                    harm = snd.to_harmonicity_cc(
+                        time_step=time_step,
+                        minimum_pitch=min_pitch_hz,
+                        silence_threshold=silence_threshold,
+                        periods_per_window=periods_per_window,
+                    )
+                    hnr_db = harm.values.flatten().astype(float)
+                    hnr_db = hnr_db[np.isfinite(hnr_db)]
+                    mean_db = float(np.mean(hnr_db)) if hnr_db.size else float("nan")
+
+                    stats = HNRStats(mean_db=mean_db)
+                    return stats, {"hnr_mean_db": stats.mean_db}
+
+                except Exception:
+                    pass
+
+                # ---- Fallback: cepstrum-based heuristic ----
+                # This approximates periodicity prominence in the cepstrum.
+                # It should be treated as an *approximate proxy*, not a strict HNR match.
+                try:
+                    from scipy.signal import get_window
+
+                    if y.size == 0:
+                        stats = HNRStats(mean_db=float("nan"))
+                        return stats, {"hnr_mean_db": stats.mean_db}
+
+                    frame_len = max(32, int(round(0.04 * sr)))  # 40 ms
+                    hop = max(1, int(round(0.01 * sr)))         # 10 ms
+                    win = get_window("hann", frame_len, fftbins=True).astype(float)
+
+                    vals = []
+                    for start in range(0, max(1, y.size - frame_len + 1), hop):
+                        fr = y[start : start + frame_len] * win
+                        spec = np.fft.rfft(fr)
+                        log_mag = np.log(np.maximum(np.abs(spec), 1e-12))
+                        cep = np.fft.irfft(log_mag)
+
+                        # Pitch-period quefrency range ~ [1/500, 1/75] seconds
+                        qmin = int(sr / 500.0)
+                        qmax = min(int(sr / 75.0), cep.size - 1)
+                        if qmax <= qmin:
+                            continue
+
+                        peak = float(np.max(cep[qmin:qmax]))
+                        noise = float(np.mean(np.abs(cep[qmin:qmax])) + 1e-12)
+                        proxy_db = 20.0 * np.log10(max(peak / noise, 1e-12))
+                        vals.append(proxy_db)
+
+                    mean_db = float(np.mean(vals)) if len(vals) else float("nan")
+                    stats = HNRStats(mean_db=mean_db)
+                    return stats, {"hnr_mean_db": stats.mean_db}
+
+                except Exception as exc:
+                    raise RuntimeError(
+                        "HNR failed. Recommended: pip install praat-parselmouth"
+                    ) from exc
+
+
+            def _sanity_test() -> None:
+                sr = 16000
+                t = np.arange(int(2.0 * sr)) / sr
+                y = 0.2 * np.sin(2.0 * np.pi * 150.0 * t)
+
+                stats, d = extract_hnr_features(y, sr)
+                assert "hnr_mean_db" in d
+
+
+            if __name__ == "__main__":
+                _sanity_test()
+                print("OK - hnr_features.py")
+            """
+        )
+        + _signature_block(),
+    )
+
+    # -------------------------------------------------------------------------
+    # F) MFCCs (13 + Δ; stats)
+    # -------------------------------------------------------------------------
+    _write(
+        out_dir,
+        "mfcc_features.py",
+        _header("MFCC (13) + Delta MFCC stats", "- numpy\n- librosa")
+        + textwrap.dedent(
+            """\
+            from __future__ import annotations
+
+            from dataclasses import dataclass
+            from typing import Dict, Tuple
+
+            import numpy as np
+
+
+            @dataclass(frozen=True)
+            class MFCCStats:
+                \"\"\"Packed MFCC summary vector (for compact downstream use).\"\"\"
+                features: np.ndarray  # shape (4*n_mfcc,)
+
+
+            def extract_mfcc_features(
+                y: np.ndarray,
+                sr: int,
+                n_mfcc: int = 13,
+                n_mels: int = 40,
+                fmin: float = 80.0,
+                fmax: float | None = 8000.0,
+                frame_length_ms: float = 25.0,
+                hop_length_ms: float = 10.0,
+            ) -> Tuple[MFCCStats, Dict[str, float]]:
+                \"\"\"Compute MFCC features and return (stats, feature_dict).
+
+                Feature dict keys
+                -----------------
+                mfcc{i}_mean, mfcc{i}_std, dmfcc{i}_mean, dmfcc{i}_std for i=1..n_mfcc
+                \"\"\"
+                y = np.asarray(y, dtype=float).flatten()
+                if y.size == 0:
+                    feats = np.full((4 * n_mfcc,), np.nan, dtype=float)
+                    stats = MFCCStats(features=feats)
+                    return stats, _as_dict(stats, n_mfcc=n_mfcc)
+
+                try:
+                    import librosa
+
+                    n_fft = max(256, int(round(frame_length_ms * 1e-3 * sr)))
+                    hop = max(1, int(round(hop_length_ms * 1e-3 * sr)))
+
+                    mfcc = librosa.feature.mfcc(
+                        y=y,
+                        sr=sr,
+                        n_mfcc=n_mfcc,
+                        n_mels=n_mels,
+                        n_fft=n_fft,
+                        hop_length=hop,
+                        fmin=fmin,
+                        fmax=fmax,
+                    )  # (n_mfcc, n_frames)
+
+                    dmfcc = librosa.feature.delta(mfcc, width=9, order=1)
+
+                    mfcc_mean = np.mean(mfcc, axis=1)
+                    mfcc_std = np.std(mfcc, axis=1, ddof=1) if mfcc.shape[1] > 1 else np.zeros(n_mfcc)
+                    dmfcc_mean = np.mean(dmfcc, axis=1)
+                    dmfcc_std = np.std(dmfcc, axis=1, ddof=1) if dmfcc.shape[1] > 1 else np.zeros(n_mfcc)
+
+                    feats = np.concatenate([mfcc_mean, mfcc_std, dmfcc_mean, dmfcc_std]).astype(float)
+                    stats = MFCCStats(features=feats)
+                    return stats, _as_dict(stats, n_mfcc=n_mfcc)
+
+                except Exception as exc:
+                    raise RuntimeError("MFCC extraction requires librosa: pip install librosa") from exc
+
+
+            def _as_dict(stats: MFCCStats, n_mfcc: int) -> Dict[str, float]:
+                v = np.asarray(stats.features, dtype=float).flatten()
+                if v.size != 4 * n_mfcc:
+                    raise ValueError("Unexpected MFCC vector length.")
+
+                out: Dict[str, float] = {}
+
+                a = v[0:n_mfcc]
+                b = v[n_mfcc:2 * n_mfcc]
+                c = v[2 * n_mfcc:3 * n_mfcc]
+                d = v[3 * n_mfcc:4 * n_mfcc]
+
+                for i in range(n_mfcc):
+                    out[f"mfcc{i+1}_mean"] = float(a[i])
+                    out[f"mfcc{i+1}_std"] = float(b[i])
+                    out[f"dmfcc{i+1}_mean"] = float(c[i])
+                    out[f"dmfcc{i+1}_std"] = float(d[i])
+
+                return out
+
+
+            def _sanity_test() -> None:
+                sr = 16000
+                t = np.arange(int(1.0 * sr)) / sr
+                y = 0.2 * np.sin(2.0 * np.pi * 220.0 * t)
+
+                stats, d = extract_mfcc_features(y, sr, n_mfcc=13)
+                assert len(d) == 13 * 4
+
+
+            if __name__ == "__main__":
+                _sanity_test()
+                print("OK - mfcc_features.py")
+            """
+        )
+        + _signature_block(),
+    )
+
+    # -------------------------------------------------------------------------
+    # G) Spectral features
+    # -------------------------------------------------------------------------
+    _write(
+        out_dir,
+        "spectral_features.py",
+        _header(
+            "Spectral features (centroid, rolloff, flux, subband energy)",
+            "- numpy\n- scipy",
+        )
+        + textwrap.dedent(
+            """\
+            from __future__ import annotations
+
+            from dataclasses import dataclass
+            from typing import Dict, Tuple
+
+            import numpy as np
+            from scipy.signal import get_window
+
+
+            @dataclass(frozen=True)
+            class SpectralStats:
+                centroid_mean_hz: float
+                centroid_std_hz: float
+                rolloff_mean_hz: float
+                rolloff_std_hz: float
+                flux_mean: float
+                flux_std: float
+                energy_low_mean: float
+                energy_mid_mean: float
+                energy_high_mean: float
+
+
+            def _stft_mag(y: np.ndarray, sr: int, n_fft: int, hop: int) -> Tuple[np.ndarray, np.ndarray]:
+                \"\"\"Return (magnitude, freqs). magnitude shape: (n_freq, n_frames).\"\"\"
+                y = np.asarray(y, dtype=float).flatten()
+                if y.size < n_fft:
+                    y = np.pad(y, (0, n_fft - y.size))
+
+                win = get_window("hann", n_fft, fftbins=True).astype(float)
+                n_frames = 1 + (y.size - n_fft) // hop
+
+                mags = []
+                for i in range(n_frames):
+                    start = i * hop
+                    fr = y[start : start + n_fft] * win
+                    spec = np.fft.rfft(fr)
+                    mags.append(np.abs(spec))
+
+                mag = np.stack(mags, axis=1).astype(float)
+                freqs = np.fft.rfftfreq(n_fft, d=1.0 / sr).astype(float)
+                return mag, freqs
+
+
+            def extract_spectral_features(
+                y: np.ndarray,
+                sr: int,
+                frame_length_ms: float = 25.0,
+                hop_length_ms: float = 10.0,
+                rolloff_percent: float = 0.85,
+                low_band: Tuple[float, float] = (80.0, 500.0),
+                mid_band: Tuple[float, float] = (500.0, 2000.0),
+                high_band: Tuple[float, float] = (2000.0, 8000.0),
+            ) -> Tuple[SpectralStats, Dict[str, float]]:
+                y = np.asarray(y, dtype=float).flatten()
+                if y.size == 0:
+                    stats = SpectralStats(*([float("nan")] * 9))
+                    return stats, _as_dict(stats)
+
+                n_fft = max(256, int(round(frame_length_ms * 1e-3 * sr)))
+                hop = max(1, int(round(hop_length_ms * 1e-3 * sr)))
+
+                mag, freqs = _stft_mag(y, sr, n_fft=n_fft, hop=hop)
+
+                eps = 1e-12
+                mag_sum = np.sum(mag, axis=0, keepdims=True) + eps
+                p = mag / mag_sum  # per-frame normalized magnitude
+
+                # Spectral centroid
+                centroid = np.sum(p * freqs[:, None], axis=0)
+
+                # Spectral rolloff
+                csum = np.cumsum(mag, axis=0)
+                thresh = rolloff_percent * csum[-1, :]
+                idx = np.array([int(np.searchsorted(csum[:, i], thresh[i])) for i in range(mag.shape[1])])
+                idx = np.clip(idx, 0, freqs.size - 1)
+                rolloff = freqs[idx]
+
+                # Spectral flux (normalized spectrum difference)
+                p2 = p / (np.linalg.norm(p, axis=0, keepdims=True) + eps)
+                dp = np.diff(p2, axis=1)
+                flux = np.sqrt(np.sum(dp * dp, axis=0))  # length n_frames-1
+
+                def _band_energy(band):
+                    f0, f1 = band
+                    sel = (freqs >= f0) & (freqs < f1)
+                    if not np.any(sel):
+                        return np.full((mag.shape[1],), np.nan, dtype=float)
+                    return np.mean(mag[sel, :] ** 2, axis=0)
+
+                e_low = _band_energy(low_band)
+                e_mid = _band_energy(mid_band)
+                e_high = _band_energy(high_band)
+
+                def _ms(x):
+                    x = np.asarray(x, dtype=float)
+                    x = x[np.isfinite(x)]
+                    if x.size == 0:
+                        return float("nan"), float("nan")
+                    return float(np.mean(x)), float(np.std(x, ddof=1) if x.size > 1 else 0.0)
+
+                c_m, c_s = _ms(centroid)
+                r_m, r_s = _ms(rolloff)
+                f_m, f_s = _ms(flux)
+
+                stats = SpectralStats(
+                    centroid_mean_hz=c_m,
+                    centroid_std_hz=c_s,
+                    rolloff_mean_hz=r_m,
+                    rolloff_std_hz=r_s,
+                    flux_mean=f_m,
+                    flux_std=f_s,
+                    energy_low_mean=float(np.nanmean(e_low)),
+                    energy_mid_mean=float(np.nanmean(e_mid)),
+                    energy_high_mean=float(np.nanmean(e_high)),
+                )
+                return stats, _as_dict(stats)
+
+
+            def _as_dict(stats: SpectralStats) -> Dict[str, float]:
+                return {
+                    "spec_centroid_mean_hz": stats.centroid_mean_hz,
+                    "spec_centroid_std_hz": stats.centroid_std_hz,
+                    "spec_rolloff_mean_hz": stats.rolloff_mean_hz,
+                    "spec_rolloff_std_hz": stats.rolloff_std_hz,
+                    "spec_flux_mean": stats.flux_mean,
+                    "spec_flux_std": stats.flux_std,
+                    "spec_energy_low_mean": stats.energy_low_mean,
+                    "spec_energy_mid_mean": stats.energy_mid_mean,
+                    "spec_energy_high_mean": stats.energy_high_mean,
+                }
+
+
+            def _sanity_test() -> None:
+                rng = np.random.default_rng(0)
+                sr = 16000
+                y = 0.05 * rng.standard_normal(int(1.0 * sr))
+
+                stats, d = extract_spectral_features(y, sr)
+                assert "spec_centroid_mean_hz" in d
+
+
+            if __name__ == "__main__":
+                _sanity_test()
+                print("OK - spectral_features.py")
+            """
+        )
+        + _signature_block(),
+    )
+
+    # -------------------------------------------------------------------------
+    # Tsallis core: Method 1 (amplitude histogram)
+    # -------------------------------------------------------------------------
+    _write(
+        out_dir,
+        "tsallis_amplitude_hist.py",
+        _header("Tsallis entropy from amplitude histogram (Method 1)", "- numpy")
+        + textwrap.dedent(
+            """\
+            from __future__ import annotations
+
+            from dataclasses import dataclass
+            from typing import Dict, Tuple
+
+            import numpy as np
+
+
+            # =========================================================================
+            # Tsallis entropy on amplitude histogram (Method 1 in the plan)
+            # =========================================================================
+            # The plan defines:
+            # 1) z-score normalize amplitude
+            # 2) discretize in B bins over [-5σ, +5σ] (default clip_sigma=5)
+            # 3) compute p_i as relative frequencies
+            # 4) compute Sq = (1 - sum p_i^q) / (q - 1), with Shannon limit at q->1
+
+
+            def tsallis_entropy(p: np.ndarray, q: float) -> float:
+                p = np.asarray(p, dtype=float).flatten()
+                p = p[np.isfinite(p)]
+                p = p[p > 0.0]
+                if p.size == 0:
+                    return float("nan")
+
+                if q == 1.0:
+                    return float(-np.sum(p * np.log(p)))
+
+                return float((1.0 - np.sum(p ** q)) / (q - 1.0))
+
+
+            def amplitude_histogram_distribution(
+                y: np.ndarray,
+                n_bins: int = 100,
+                clip_sigma: float = 5.0,
+            ) -> np.ndarray:
+                \"\"\"Return p (shape: (n_bins,)) from the standardized amplitude histogram.\"\"\"
+                y = np.asarray(y, dtype=float).flatten()
+                if y.size == 0:
+                    return np.array([], dtype=float)
+
+                mu = float(np.mean(y))
+                sd = float(np.std(y, ddof=1) if y.size > 1 else 0.0)
+
+                if sd <= 0.0:
+                    # Constant signal => degenerate distribution
+                    p = np.zeros((n_bins,), dtype=float)
+                    p[n_bins // 2] = 1.0
+                    return p
+
+                z = (y - mu) / sd
+                z = np.clip(z, -clip_sigma, clip_sigma)
+
+                edges = np.linspace(-clip_sigma, clip_sigma, n_bins + 1)
+                hist, _ = np.histogram(z, bins=edges)
+                p = hist.astype(float)
+                s = float(np.sum(p))
+                return p / s if s > 0 else p
+
+
+            @dataclass(frozen=True)
+            class TsallisAmpStats:
+                sq: float
+                shannon: float
+
+
+            def extract_tsallis_amplitude_features(
+                y: np.ndarray,
+                q: float = 1.3,
+                n_bins: int = 100,
+                clip_sigma: float = 5.0,
+            ) -> Tuple[TsallisAmpStats, Dict[str, float]]:
+                p = amplitude_histogram_distribution(y, n_bins=n_bins, clip_sigma=clip_sigma)
+                sq = tsallis_entropy(p, q=q)
+                s1 = tsallis_entropy(p, q=1.0)
+
+                stats = TsallisAmpStats(sq=float(sq), shannon=float(s1))
+                features = {"tsallis_sq_amp": stats.sq, "shannon_s1_amp": stats.shannon}
+                return stats, features
+
+
+            def _sanity_test() -> None:
+                rng = np.random.default_rng(0)
+                y = rng.standard_normal(10000)
+
+                stats, d = extract_tsallis_amplitude_features(y, q=1.3)
+                assert set(d.keys()) == {"tsallis_sq_amp", "shannon_s1_amp"}
+                assert np.isfinite(d["shannon_s1_amp"])
+
+
+            if __name__ == "__main__":
+                _sanity_test()
+                print("OK - tsallis_amplitude_hist.py")
+            """
+        )
+        + _signature_block(),
+    )
+
+    # -------------------------------------------------------------------------
+    # Tsallis core: Method 2 (instantaneous F0 histogram)
+    # -------------------------------------------------------------------------
+    _write(
+        out_dir,
+        "tsallis_f0_hist.py",
+        _header(
+            "Tsallis entropy from instantaneous F0 histogram (Method 2)",
+            "- numpy\n- librosa OR praat-parselmouth",
+        )
+        + textwrap.dedent(
+            """\
+            from __future__ import annotations
+
+            from dataclasses import dataclass
+            from typing import Dict, Tuple
+
+            import numpy as np
+
+
+            def tsallis_entropy(p: np.ndarray, q: float) -> float:
+                p = np.asarray(p, dtype=float).flatten()
+                p = p[np.isfinite(p)]
+                p = p[p > 0.0]
+                if p.size == 0:
+                    return float("nan")
+
+                if q == 1.0:
+                    return float(-np.sum(p * np.log(p)))
+
+                return float((1.0 - np.sum(p ** q)) / (q - 1.0))
+
+
+            def _estimate_f0_track(
+                y: np.ndarray,
+                sr: int,
+                fmin_hz: float,
+                fmax_hz: float,
+                frame_length_ms: float,
+                hop_length_ms: float,
+            ) -> np.ndarray:
+                \"\"\"Prefer Praat if available, else librosa.yin.\"\"\"
+                y = np.asarray(y, dtype=float).flatten()
+
+                hop = max(1, int(round(hop_length_ms * 1e-3 * sr)))
+                frame_length = max(256, int(round(frame_length_ms * 1e-3 * sr)))
+
+                try:
+                    import parselmouth  # type: ignore
+
+                    snd = parselmouth.Sound(y, sampling_frequency=sr)
+                    time_step = hop / float(sr)
+                    pitch = snd.to_pitch(time_step=time_step, pitch_floor=fmin_hz, pitch_ceiling=fmax_hz)
+                    f0 = pitch.selected_array["frequency"].astype(float)
+                    f0 = np.where(f0 > 0.0, f0, np.nan)
+                    return f0
+
+                except Exception:
+                    import librosa
+
+                    f0 = librosa.yin(
+                        y,
+                        sr=sr,
+                        fmin=fmin_hz,
+                        fmax=fmax_hz,
+                        frame_length=frame_length,
+                        hop_length=hop,
+                    ).astype(float)
+                    return f0
+
+
+            def f0_histogram_distribution(
+                y: np.ndarray,
+                sr: int,
+                fmin_hz: float = 75.0,
+                fmax_hz: float = 300.0,
+                n_bins: int = 50,
+                frame_length_ms: float = 25.0,
+                hop_length_ms: float = 10.0,
+            ) -> np.ndarray:
+                f0 = _estimate_f0_track(
+                    y=y,
+                    sr=sr,
+                    fmin_hz=fmin_hz,
+                    fmax_hz=fmax_hz,
+                    frame_length_ms=frame_length_ms,
+                    hop_length_ms=hop_length_ms,
+                )
+                f0 = np.asarray(f0, dtype=float)
+                f0 = f0[np.isfinite(f0)]
+
+                edges = np.linspace(fmin_hz, fmax_hz, n_bins + 1)
+                if f0.size == 0:
+                    return np.zeros((n_bins,), dtype=float)
+
+                hist, _ = np.histogram(f0, bins=edges)
+                p = hist.astype(float)
+                s = float(np.sum(p))
+                return p / s if s > 0 else p
+
+
+            @dataclass(frozen=True)
+            class TsallisF0Stats:
+                sq: float
+                shannon: float
+
+
+            def extract_tsallis_f0_features(
+                y: np.ndarray,
+                sr: int,
+                q: float = 1.3,
+                fmin_hz: float = 75.0,
+                fmax_hz: float = 300.0,
+                n_bins: int = 50,
+            ) -> Tuple[TsallisF0Stats, Dict[str, float]]:
+                p = f0_histogram_distribution(
+                    y=y,
+                    sr=sr,
+                    fmin_hz=fmin_hz,
+                    fmax_hz=fmax_hz,
+                    n_bins=n_bins,
+                )
+                sq = tsallis_entropy(p, q=q)
+                s1 = tsallis_entropy(p, q=1.0)
+
+                stats = TsallisF0Stats(sq=float(sq), shannon=float(s1))
+                features = {"tsallis_sq_f0": stats.sq, "shannon_s1_f0": stats.shannon}
+                return stats, features
+
+
+            def _sanity_test() -> None:
+                sr = 16000
+                t = np.arange(int(2.0 * sr)) / sr
+                y = 0.2 * np.sin(2.0 * np.pi * 150.0 * t)
+
+                stats, d = extract_tsallis_f0_features(y, sr, q=1.3)
+                assert set(d.keys()) == {"tsallis_sq_f0", "shannon_s1_f0"}
+
+
+            if __name__ == "__main__":
+                _sanity_test()
+                print("OK - tsallis_f0_hist.py")
+            """
+        )
+        + _signature_block(),
+    )
+
+    # -------------------------------------------------------------------------
+    # q estimation (a) grid search using discrimination statistic (t-stat)
+    # -------------------------------------------------------------------------
+    _write(
+        out_dir,
+        "tsallis_q_gridsearch.py",
+        _header(
+            "Tsallis q grid search (maximize DP vs HC separation via t-stat)",
+            "- numpy\n- scipy",
+        )
+        + textwrap.dedent(
+            """\
+            from __future__ import annotations
+
+            from dataclasses import dataclass
+            from typing import Dict, Tuple
+
+            import numpy as np
+            from scipy.stats import ttest_ind
+
+
+            def tsallis_entropy(p: np.ndarray, q: float) -> float:
+                p = np.asarray(p, dtype=float).flatten()
+                p = p[np.isfinite(p)]
+                p = p[p > 0.0]
+                if p.size == 0:
+                    return float("nan")
+
+                if q == 1.0:
+                    return float(-np.sum(p * np.log(p)))
+
+                return float((1.0 - np.sum(p ** q)) / (q - 1.0))
+
+
+            @dataclass(frozen=True)
+            class GridSearchResult:
+                q_opt: float
+                score_opt: float
+                q_grid: np.ndarray
+                scores: np.ndarray
+
+
+            def grid_search_q(
+                p_group0: np.ndarray,
+                p_group1: np.ndarray,
+                q_min: float = 0.1,
+                q_max: float = 3.0,
+                q_step: float = 0.05,
+            ) -> Tuple[GridSearchResult, Dict[str, float]]:
+                \"\"\"Select q maximizing |t| where t compares Sq distributions between two groups.
+
+                Inputs
+                ------
+                p_group0: shape (n0, B)
+                p_group1: shape (n1, B)
+                \"\"\"
+                p0 = np.asarray(p_group0, dtype=float)
+                p1 = np.asarray(p_group1, dtype=float)
+
+                if p0.ndim != 2 or p1.ndim != 2 or p0.shape[1] != p1.shape[1]:
+                    raise ValueError("Expected p arrays with shapes (n, B) for both groups, same B.")
+
+                q_grid = np.arange(q_min, q_max + 1e-12, q_step, dtype=float)
+                scores = np.full_like(q_grid, np.nan, dtype=float)
+
+                for i, q in enumerate(q_grid):
+                    s0 = np.array([tsallis_entropy(p, q) for p in p0], dtype=float)
+                    s1 = np.array([tsallis_entropy(p, q) for p in p1], dtype=float)
+
+                    s0 = s0[np.isfinite(s0)]
+                    s1 = s1[np.isfinite(s1)]
+                    if s0.size < 2 or s1.size < 2:
+                        continue
+
+                    t_stat, _ = ttest_ind(s0, s1, equal_var=False, nan_policy="omit")
+                    scores[i] = abs(float(t_stat))
+
+                if not np.any(np.isfinite(scores)):
+                    res = GridSearchResult(q_opt=float("nan"), score_opt=float("nan"), q_grid=q_grid, scores=scores)
+                    return res, {"q_grid_opt": res.q_opt, "q_grid_score_opt": res.score_opt}
+
+                idx = int(np.nanargmax(scores))
+                res = GridSearchResult(
+                    q_opt=float(q_grid[idx]),
+                    score_opt=float(scores[idx]),
+                    q_grid=q_grid,
+                    scores=scores,
+                )
+                return res, {"q_grid_opt": res.q_opt, "q_grid_score_opt": res.score_opt}
+
+
+            def _sanity_test() -> None:
+                rng = np.random.default_rng(0)
+                B = 50
+
+                # Two synthetic groups of discrete distributions:
+                # group0 concentrated, group1 more spread => typically higher entropy.
+                p0 = rng.dirichlet(10.0 * np.ones(B), size=20)
+                p1 = rng.dirichlet(3.0 * np.ones(B), size=20)
+
+                res, d = grid_search_q(p0, p1)
+                assert "q_grid_opt" in d and "q_grid_score_opt" in d
+
+
+            if __name__ == "__main__":
+                _sanity_test()
+                print("OK - tsallis_q_gridsearch.py")
+            """
+        )
+        + _signature_block(),
+    )
+
+    # -------------------------------------------------------------------------
+    # q estimation (b) q-Gaussian fit
+    # -------------------------------------------------------------------------
+    _write(
+        out_dir,
+        "tsallis_q_qgaussian_fit.py",
+        _header("Tsallis q via q-Gaussian fit (histogram density)", "- numpy\n- scipy")
+        + textwrap.dedent(
+            """\
+            from __future__ import annotations
+
+            from dataclasses import dataclass
+            from typing import Dict, Tuple
+
+            import numpy as np
+            from scipy.optimize import curve_fit
+
+
+            def q_gaussian(x: np.ndarray, A: float, beta: float, q: float) -> np.ndarray:
+                \"\"\"q-Gaussian density model used in nonextensive statistics.
+
+                p(x) = A * [1 - (1-q)*beta*x^2]^(1/(1-q)), where bracket>=0.
+
+                Implementation detail:
+                - For q close to 1, we switch to a Gaussian-like form A*exp(-beta*x^2) for stability.
+                \"\"\"
+                x = np.asarray(x, dtype=float)
+                if abs(q - 1.0) < 1e-6:
+                    return A * np.exp(-beta * x**2)
+
+                inside = 1.0 - (1.0 - q) * beta * x**2
+                inside = np.maximum(inside, 0.0)
+                return A * inside ** (1.0 / (1.0 - q))
+
+
+            @dataclass(frozen=True)
+            class QGaussianFit:
+                q_hat: float
+                beta_hat: float
+                A_hat: float
+                rmse: float
+
+
+            def estimate_q_from_amplitude_qgaussian(
+                y: np.ndarray,
+                n_bins: int = 100,
+                clip_sigma: float = 5.0,
+                q_bounds: Tuple[float, float] = (0.5, 2.5),
+            ) -> Tuple[QGaussianFit, Dict[str, float]]:
+                \"\"\"Estimate q by fitting a q-Gaussian to the standardized amplitude histogram.
+
+                Warning
+                -------
+                This is sensitive to binning/clipping and should be validated empirically on your dataset.
+                \"\"\"
+                y = np.asarray(y, dtype=float).flatten()
+                if y.size == 0:
+                    fit = QGaussianFit(float("nan"), float("nan"), float("nan"), float("nan"))
+                    return fit, _as_dict(fit)
+
+                mu = float(np.mean(y))
+                sd = float(np.std(y, ddof=1) if y.size > 1 else 0.0)
+                if sd <= 0.0:
+                    fit = QGaussianFit(1.0, 1.0, 1.0, 0.0)
+                    return fit, _as_dict(fit)
+
+                z = (y - mu) / sd
+                z = np.clip(z, -clip_sigma, clip_sigma)
+
+                edges = np.linspace(-clip_sigma, clip_sigma, n_bins + 1)
+                hist, edges = np.histogram(z, bins=edges, density=True)
+                centers = 0.5 * (edges[:-1] + edges[1:])
+
+                # Initial guesses
+                p0 = (float(np.max(hist) + 1e-12), 1.0, 1.2)
+                lower = (0.0, 1e-6, q_bounds[0])
+                upper = (np.inf, 1e3, q_bounds[1])
+
+                try:
+                    popt, _ = curve_fit(
+                        q_gaussian,
+                        centers,
+                        hist,
+                        p0=p0,
+                        bounds=(lower, upper),
+                        maxfev=20000,
+                    )
+                    A_hat, beta_hat, q_hat = map(float, popt)
+                    pred = q_gaussian(centers, A_hat, beta_hat, q_hat)
+                    rmse = float(np.sqrt(np.mean((pred - hist) ** 2)))
+                    fit = QGaussianFit(q_hat=q_hat, beta_hat=beta_hat, A_hat=A_hat, rmse=rmse)
+                    return fit, _as_dict(fit)
+
+                except Exception:
+                    fit = QGaussianFit(float("nan"), float("nan"), float("nan"), float("nan"))
+                    return fit, _as_dict(fit)
+
+
+            def _as_dict(fit: QGaussianFit) -> Dict[str, float]:
+                return {
+                    "q_qgauss_hat": float(fit.q_hat),
+                    "q_qgauss_beta_hat": float(fit.beta_hat),
+                    "q_qgauss_A_hat": float(fit.A_hat),
+                    "q_qgauss_rmse": float(fit.rmse),
+                }
+
+
+            def _sanity_test() -> None:
+                rng = np.random.default_rng(0)
+                y = rng.standard_normal(20000)
+                fit, d = estimate_q_from_amplitude_qgaussian(y)
+                assert set(d.keys()) == {
+                    "q_qgauss_hat", "q_qgauss_beta_hat", "q_qgauss_A_hat", "q_qgauss_rmse"
+                }
+
+
+            if __name__ == "__main__":
+                _sanity_test()
+                print("OK - tsallis_q_qgaussian_fit.py")
+            """
+        )
+        + _signature_block(),
+    )
+
+    # -------------------------------------------------------------------------
+    # q estimation (c) extensivity criterion (linearity of Sq vs segment length)
+    # -------------------------------------------------------------------------
+    _write(
+        out_dir,
+        "tsallis_q_extensivity.py",
+        _header("Tsallis q via extensivity (scaling linearity)", "- numpy")
+        + textwrap.dedent(
+            """\
+            from __future__ import annotations
+
+            from dataclasses import dataclass
+            from typing import Dict, Tuple
+
+            import numpy as np
+
+
+            def tsallis_entropy(p: np.ndarray, q: float) -> float:
+                p = np.asarray(p, dtype=float).flatten()
+                p = p[np.isfinite(p)]
+                p = p[p > 0.0]
+                if p.size == 0:
+                    return float("nan")
+
+                if q == 1.0:
+                    return float(-np.sum(p * np.log(p)))
+
+                return float((1.0 - np.sum(p ** q)) / (q - 1.0))
+
+
+            def amplitude_hist_p(z: np.ndarray, n_bins: int, clip_sigma: float) -> np.ndarray:
+                z = np.asarray(z, dtype=float).flatten()
+                z = np.clip(z, -clip_sigma, clip_sigma)
+                edges = np.linspace(-clip_sigma, clip_sigma, n_bins + 1)
+                hist, _ = np.histogram(z, bins=edges)
+                p = hist.astype(float)
+                s = float(np.sum(p))
+                return p / s if s > 0 else p
+
+
+            @dataclass(frozen=True)
+            class ExtensivityResult:
+                q_opt: float
+                r2_opt: float
+                q_grid: np.ndarray
+                r2: np.ndarray
+
+
+            def estimate_q_extensivity(
+                y: np.ndarray,
+                q_min: float = 0.1,
+                q_max: float = 3.0,
+                q_step: float = 0.05,
+                n_bins: int = 100,
+                clip_sigma: float = 5.0,
+                segment_fracs: Tuple[float, ...] = (1.0, 0.5, 0.25),
+            ) -> Tuple[ExtensivityResult, Dict[str, float]]:
+                \"\"\"Pick q that makes Sq scale ~ linearly with segment length.
+
+                Operationalization:
+                - z-score normalize y
+                - take prefix segments of different lengths
+                - compute Sq for each length
+                - fit Sq ~ a*L + b and compute R^2
+                - pick q that maximizes R^2
+                \"\"\"
+                y = np.asarray(y, dtype=float).flatten()
+                if y.size < 100:
+                    res = ExtensivityResult(float("nan"), float("nan"), np.array([]), np.array([]))
+                    return res, {"q_ext_hat": res.q_opt, "q_ext_r2": res.r2_opt}
+
+                mu = float(np.mean(y))
+                sd = float(np.std(y, ddof=1) if y.size > 1 else 0.0)
+                if sd <= 0.0:
+                    res = ExtensivityResult(1.0, 1.0, np.array([1.0]), np.array([1.0]))
+                    return res, {"q_ext_hat": 1.0, "q_ext_r2": 1.0}
+
+                z = (y - mu) / sd
+                N = z.size
+                lengths = np.unique([max(10, int(round(fr * N))) for fr in segment_fracs])
+                lengths = lengths[lengths <= N].astype(int)
+
+                q_grid = np.arange(q_min, q_max + 1e-12, q_step, dtype=float)
+                r2_vals = np.full_like(q_grid, np.nan, dtype=float)
+
+                for i, q in enumerate(q_grid):
+                    S = []
+                    for L in lengths:
+                        p = amplitude_hist_p(z[:L], n_bins=n_bins, clip_sigma=clip_sigma)
+                        S.append(tsallis_entropy(p, q=q))
+                    S = np.asarray(S, dtype=float)
+                    if not np.all(np.isfinite(S)):
+                        continue
+
+                    x = lengths.astype(float)
+                    x0 = float(np.mean(x))
+                    y0 = float(np.mean(S))
+                    denom = float(np.sum((x - x0) ** 2))
+                    if denom <= 0:
+                        continue
+                    a = float(np.sum((x - x0) * (S - y0)) / denom)
+                    b = y0 - a * x0
+                    S_hat = a * x + b
+
+                    ss_res = float(np.sum((S - S_hat) ** 2))
+                    ss_tot = float(np.sum((S - y0) ** 2))
+                    r2_vals[i] = 1.0 - ss_res / ss_tot if ss_tot > 0 else 1.0
+
+                if not np.any(np.isfinite(r2_vals)):
+                    res = ExtensivityResult(float("nan"), float("nan"), q_grid, r2_vals)
+                    return res, {"q_ext_hat": res.q_opt, "q_ext_r2": res.r2_opt}
+
+                idx = int(np.nanargmax(r2_vals))
+                res = ExtensivityResult(
+                    q_opt=float(q_grid[idx]),
+                    r2_opt=float(r2_vals[idx]),
+                    q_grid=q_grid,
+                    r2=r2_vals,
+                )
+                return res, {"q_ext_hat": res.q_opt, "q_ext_r2": res.r2_opt}
+
+
+            def _sanity_test() -> None:
+                rng = np.random.default_rng(0)
+                y = rng.standard_normal(5000)
+                res, d = estimate_q_extensivity(y)
+                assert "q_ext_hat" in d and "q_ext_r2" in d
+
+
+            if __name__ == "__main__":
+                _sanity_test()
+                print("OK - tsallis_q_extensivity.py")
+            """
+        )
+        + _signature_block(),
+    )
+
+    print(f"Done. Generated modules in: {out_dir.resolve()}")
+
+
+if __name__ == "__main__":
+    main()
+
+# -----------------------------------------------------------------------------
+# Code signature:
+# Prof. Dr. Bruno Duarte Gomes / Laboratório de Neurofisiologia Eduardo Oswaldo Cruz / Laboratório de Simulação e Biologia Computacional / Instituto de Ciências Biológicas - UFPA
+# -----------------------------------------------------------------------------

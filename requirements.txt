@@ -7,6 +7,7 @@ Flask-WTF==1.2.1
 email-validator==2.2.0
 marshmallow==3.21.3
 flask-smorest==0.44.0
+soundfile==0.12.1
 
 # qualidade e testes
 pytest==8.2.2

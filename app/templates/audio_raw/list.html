@@ -9,13 +9,13 @@
         <p class="mt-1 text-sm text-slate-600">
           Base: <code class="rounded bg-slate-100 px-2 py-0.5">{{ base }}</code>
         </p>
+        
         <button
           class="rounded-lg border px-3 py-1 hover:bg-slate-50"
-          data-group="{{ a.group }}"
-          data-filename="{{ a.filename }}"
-          onclick="startPreprocess(this)">
-          Pré-processar
+          onclick="openPPModal('Pré-processamento em lote')">
+          Pré-processar (lote)
         </button>
+
       </div>
 
       <div class="flex gap-2 text-sm">
@@ -114,14 +114,24 @@
   <div class="absolute inset-0 bg-black/40" onclick="closePPModal()"></div>
 
   <div class="relative mx-auto mt-16 w-[min(900px,92vw)] rounded-2xl bg-white shadow-xl">
+    
     <div class="flex items-center justify-between border-b p-4">
       <div>
         <h2 class="text-lg font-semibold">Pré-processamento — logs ao vivo</h2>
         <p id="ppSubtitle" class="mt-0.5 text-xs text-slate-600 font-mono"></p>
       </div>
-      <button class="rounded-lg border px-3 py-1 text-sm hover:bg-slate-50" onclick="closePPModal()">
-        Fechar
-      </button>
+
+      <div class="flex gap-2">
+        <button id="btnStartBatch"
+          class="rounded-lg bg-slate-900 px-3 py-1 text-sm text-white hover:bg-slate-800"
+          onclick="startPreprocessBatch()">
+          Iniciar
+        </button>
+
+        <button class="rounded-lg border px-3 py-1 text-sm hover:bg-slate-50" onclick="closePPModal()">
+          Fechar
+        </button>
+      </div>
     </div>
 
     <div class="p-4">
@@ -188,6 +198,44 @@
     };
   }
 
+  async function startPreprocessBatch() {
+    const btn = document.getElementById("btnStartBatch");
+    btn.disabled = true;
+
+    appendPP(">> iniciando pré-processamento em lote...");
+
+    const res = await fetch(`/audio-raw/preprocess-batch`, { method: "POST" });
+    if (!res.ok) {
+      appendPP(">> erro ao iniciar lote.");
+      btn.disabled = false;
+      return;
+    }
+
+    const data = await res.json();
+    appendPP(`>> total arquivos: ${data.total}`);
+    appendPP(`>> run_id: ${data.run_id}`);
+
+    // fecha qualquer ES anterior
+    try { if (ppES) ppES.close(); } catch {}
+    ppES = new EventSource(`/audio-raw/preprocess/stream/${data.run_id}`);
+
+    ppES.onmessage = (ev) => appendPP(ev.data);
+
+    ppES.addEventListener("done", () => {
+      appendPP(">> lote finalizado.");
+      ppES.close();
+      ppES = null;
+      btn.disabled = false;
+    });
+
+    ppES.onerror = () => {
+      appendPP(">> erro SSE / conexão interrompida.");
+      try { ppES.close(); } catch {}
+      ppES = null;
+      btn.disabled = false;
+    };
+  }
+
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !document.getElementById("ppModal").classList.contains("hidden")) {
       closePPModal();
@@ -222,7 +270,7 @@
       modalPlayer.load();
 
       // busca JSON com props
-      const infoUrl = `/audio-raw/info/${encodeURIComponent(group)}/${encodeURIComponent(filename)}`;
+      const infoUrl = `/audio-raw/info-json/${encodeURIComponent(group)}/${encodeURIComponent(filename)}`;
       fetch(infoUrl)
         .then(r => {
           if (!r.ok) throw new Error("Falha ao carregar info");

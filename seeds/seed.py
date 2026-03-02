@@ -2,29 +2,7 @@ from werkzeug.security import generate_password_hash
 
 from app import create_app
 from app.extensions import db
-from app.models.user import User
 from app.models.params import Params
-
-
-def seed_users() -> None:
-    """
-    Cria usuário admin padrão se não existir.
-    """
-    admin_email = "admin@example.com"
-
-    existing = db.session.query(User).filter_by(email=admin_email).first()
-    if existing:
-        print("Usuário admin já existe.")
-        return
-
-    user = User(
-        email=admin_email,
-        password_hash=generate_password_hash("admin123"),
-    )
-
-    db.session.add(user)
-    db.session.commit()
-    print("Usuário admin criado com sucesso.")
 
 
 def seed_params() -> None:
@@ -60,7 +38,6 @@ def run():
 
     with app.app_context():
         print("Iniciando seed...")
-        seed_users()
         seed_params()
         print("Seed finalizado.")
 

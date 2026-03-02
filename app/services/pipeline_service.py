@@ -85,7 +85,7 @@ def example_pipeline():
     from ..globals import params_singleton
 
     p = params_singleton.get()
-    print(f"Iniciando pipeline com SR={p.SR} duration={p.duration}")
+    print(f"Iniciando pipeline com SR={int(p.SR)} duration={p.duration}")
     for i in range(1, 11):
         print(f"Processando etapa {i}/10 ...")
         time.sleep(0.4)

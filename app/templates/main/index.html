@@ -3,23 +3,22 @@
 
 {% block content %}
   <div class="rounded-2xl bg-white p-6 shadow-sm">
-    <h1 class="text-2xl font-semibold">Voice Features Extrator</h1>
+    <h1 class="text-2xl font-semibold">Voice Features - Pre-proccess and Features Extrator</h1>
     <p class="mt-2 text-slate-600">
       Voice Analisys and Features Extraction Application for Parkinson Desease Classification with Machine Learning and Deep Learning
     </p>
 
     <div class="mt-6 flex gap-3">
-      <a href="{{ url_for('auth.login') }}"
-         class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800">
-        Ir para Login
-      </a>
       <a href="/health"
          class="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-slate-50">
         Healthcheck
       </a>
-      <p class="mt-2 text-slate-600">
+    </div>
+
+    <br>
+
+    <p class="mt-5 text-slate-400">
       Swagger em <code>/api/swagger-ui</code> e streaming SSE em <code>/pipeline</code>.
     </p>
-    </div>
   </div>
 {% endblock %}

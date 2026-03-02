@@ -1,8 +1,7 @@
 import time
 from flask import Blueprint, Response, render_template, stream_with_context, jsonify
 from ...services.pipeline_service import pipeline_manager, example_pipeline
-
-bp = Blueprint("pipeline", __name__)
+from . import bp
 
 
 @bp.get("/pipeline")
