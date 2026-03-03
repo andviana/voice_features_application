@@ -83,7 +83,12 @@ def list_audio_raw():
                     )
                 )
 
-    return render_template("audio_raw/list.html", items=items, counts=counts, base=str(base))
+    return render_template(
+        "audio_raw/list.html", 
+        items=items, 
+        counts=counts, 
+        base=str(base),
+    )
 
 
 @bp.get("/audio-raw/play/<group>/<path:filename>")

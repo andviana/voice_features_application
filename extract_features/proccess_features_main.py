@@ -12,15 +12,15 @@ import librosa
 import pandas as pd
 from tqdm import tqdm
 
-from modules.extract_features.f0_features import extract_f0_features
-from modules.extract_features.formants_lpc import extract_formant_features
-from modules.extract_features.hnr_features import extract_hnr_features
-from modules.extract_features.jitter_features import extract_jitter_features
-from modules.extract_features.shimmer_features import extract_shimmer_features
-from modules.extract_features.mfcc_features import extract_mfcc_features
-from modules.extract_features.spectral_features import extract_spectral_features
-from modules.extract_features.tsallis_amplitude_hist import extract_tsallis_amplitude_features
-from modules.extract_features.tsallis_f0_hist import extract_tsallis_f0_features
+from .f0_features import extract_f0_features
+from .formants_lpc import extract_formant_features
+from .hnr_features import extract_hnr_features
+from .jitter_features import extract_jitter_features
+from .shimmer_features import extract_shimmer_features
+from .mfcc_features import extract_mfcc_features
+from .spectral_features import extract_spectral_features
+from .tsallis_amplitude_hist import extract_tsallis_amplitude_features
+from .tsallis_f0_hist import extract_tsallis_f0_features
 
 def processar_pasta_audios(caminho_pasta: str, arquivo_saida: str):
     """

@@ -1,54 +1,48 @@
-import soundfile as sf
 import librosa
-import pandas as pd
+import soundfile as sf
 import os
 
-from pre_proccess import analise, filters, normalize, windowing
+from .analise import analisar_amostra
+from .filters import remove_dc_offset, apply_bandpass
+from .normalize import ensure_mono, scale_amplitude
+from .windowing import remove_silence_adaptive, get_stable_segment
 
 
-# Caminho para o arquivo de metadados
-MANIFEST_PATH = 'manifest.csv'
-
-def get_sex_from_manifest(recording_id):
-    """Busca o sexo do paciente no arquivo manifest.csv."""
-    try:
-        df = pd.read_csv(MANIFEST_PATH)
-        row = df[df['recording_id'] == recording_id]
-        if not row.empty:
-            return row.iloc[0]['sex']
-    except Exception as e:
-        print(f"Erro ao ler manifest: {e}")
-    return 'Unknown'
-
-def executar_pipeline(input_path, output_path, target_sr=44100, duration=2.0):
-    # 1. Carregamento original
-    y, sr = librosa.load(input_path, sr=None)
+def executar_pipeline(input_path, output_path, target_sr=48000, duration=2.5):
+    """
+    Executa a sequência 4.1 do Plano de Pesquisa PPGEE/UFPA.
+    Pipeline estrito conforme Plano de Pesquisa 4.1.
+    Nota: Frequência padrão de 48kHz para o microfone Samson Q2U.
+    """
+    # 1. Carregamento e Conversão para Mono (Item 4.1.1)
+    y, sr = librosa.load(input_path, sr=target_sr, mono=False)
+    y = ensure_mono(y)
     
-    # Identificação do áudio para busca no metadado
-    recording_id = os.path.basename(input_path).replace('.wav', '')
-    sexo = get_sex_from_manifest(recording_id)
-
-    # 2. Sequência Metodológica Shen 2025 + Tsallis
-    y = normalize.resample_audio(y, sr, target_sr)
-    y = filters.remove_dc_offset(y)
-
-    # y = filters.apply_bandpass(y, target_sr)
-    # Filtra conforme floor e ceiling por sexo 
-    y = filters.apply_shen_filter(y, target_sr, sexo)
-
-    y = normalize.scale_amplitude(y) # Normalização [-1, 1]
-    y_final = windowing.trim_and_segment(y, target_sr, duration)
+    # 2. Remoção de DC Offset (Item 4.1.2)
+    y = remove_dc_offset(y)
     
-    # 3. Salva o áudio processado
+    # 3. Filtragem Passa-Banda 80-8000 Hz (Item 4.1.3)
+    y = apply_bandpass(y, target_sr)
+    
+    # 4. Remoção de Silêncio Adaptativa (Item 4.1.4)
+    y = remove_silence_adaptive(y, target_sr)
+    
+    # 5. Normalização de Amplitude [-1, 1] (Item 4.1.5)
+    y = scale_amplitude(y)
+    
+    # 6. Seleção de Segmento Estável Central (Item 4.1.6)
+    # Definido 2.5s como meio-termo do intervalo 2-3s solicitado
+    y_final = get_stable_segment(y, target_sr, duration)
+       
+    # Salva o áudio processado
+    os.makedirs(os.path.dirname(output_path), exist_ok=True)
     sf.write(output_path, y_final, target_sr)
     
     # 4. Log de consistência
-    info = analise.analisar_amostra(y_final, target_sr)
-    info['sexo_aplicado'] = sexo
+    info = analisar_amostra(y_final, target_sr)
     return info
 
 if __name__ == "__main__":
-    # Exemplo de teste com um arquivo
     # info = executar_pipeline("data/raw/PD/exemplo.wav", "data/processed/PD/exemplo.wav")
     # print(info)
     print("Pipeline pronto para processamento em lote.")

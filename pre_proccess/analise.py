@@ -12,10 +12,16 @@ def analisar_amostra(y, sr):
     }
 
 def sanity_test():
-    y_test = np.random.uniform(-0.5, 0.5, 44100)
-    res = analisar_amostra(y_test, 44100)
-    assert res["Sample Rate"] == 44100
-    print("OK - analise.py")
+    """Valida a extração de metadados."""
+    sr = 44100
+    y_test = np.random.uniform(-0.5, 0.5, sr)
+    res = analisar_amostra(y_test, sr)
+    
+    # Verificação de chaves e tipos
+    assert all(k in res for k in ["Duração (s)", "Sample Rate", "Amp Máx", "DC Offset", "RMS"])
+    assert res["Sample Rate"] == sr
+    assert isinstance(res["RMS"], float)
+    print("OK - analise.py: Metadados validados.")
 
 if __name__ == "__main__":
     sanity_test()

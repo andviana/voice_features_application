@@ -1,0 +1,415 @@
+{% extends "base.html" %}
+{% block title %}Áudios Processados{% endblock %}
+
+{% block content %}
+  <div class="rounded-2xl bg-white p-6 shadow-sm">
+    <div class="flex flex-wrap items-end justify-between gap-3">
+      <div>
+        <h1 class="text-xl font-semibold">Áudios Processados</h1>
+        <p class="mt-1 text-sm text-slate-600">
+          Base: <code class="rounded bg-slate-100 px-2 py-0.5">{{ base }}</code>
+        </p>
+      </div>
+
+      <div class="flex gap-2 text-sm">
+        <span class="rounded-xl border bg-slate-50 px-3 py-1">HC_AH: <b>{{ counts["HC_AH"] }}</b></span>
+        <span class="rounded-xl border bg-slate-50 px-3 py-1">PD_AH: <b>{{ counts["PD_AH"] }}</b></span>
+      </div>
+
+      <div class="flex flex-wrap gap-2 text-sm items-center justify-end">
+        <!-- <span class="rounded-xl border bg-slate-50 px-3 py-1">HC_AH: <b>{{ counts["HC_AH"] }}</b></span>
+        <span class="rounded-xl border bg-slate-50 px-3 py-1">PD_AH: <b>{{ counts["PD_AH"] }}</b></span> -->
+
+        <button
+          class="rounded-xl border bg-white px-3 py-1 hover:bg-slate-50"
+          onclick="startExtractFeaturesBatch('HC_AH')">
+          Extrair features (HC_AH)
+        </button>
+
+        <button
+          class="rounded-xl border bg-white px-3 py-1 hover:bg-slate-50"
+          onclick="startExtractFeaturesBatch('PD_AH')">
+          Extrair features (PD_AH)
+        </button>
+
+        <button
+          class="rounded-xl border bg-white px-3 py-1 hover:bg-slate-50"
+          onclick="startExtractFeaturesBatchAll()">
+          Extrair features (tudo)
+        </button>
+      </div>
+
+    </div>
+
+    <div class="mt-4 overflow-hidden rounded-xl border">
+      <table class="w-full text-sm">
+        <thead class="bg-slate-50 text-left">
+          <tr class="[&>th]:px-4 [&>th]:py-3">
+            <th>Grupo</th>
+            <th>Arquivo</th>
+            <th>Duração</th>
+            <th>SR</th>
+            <th>Canais</th>
+            <th>Tamanho</th>
+            <th>Modificado</th>
+            <th class="text-right">Ações</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y">
+          {% for a in items %}
+            <tr class="[&>td]:px-4 [&>td]:py-3 align-top">
+              <td class="font-medium">{{ a.group }}</td>
+              <td class="font-mono text-xs">{{ a.filename }}</td>
+              <td>{{ "%.2f"|format(a.duration_sec) }}s</td>
+              <td>{{ a.sample_rate_hz }}</td>
+              <td>{{ a.n_channels }}</td>
+              <td>{{ (a.size_bytes / 1024)|round(1) }} KB</td>
+              <td class="text-xs text-slate-600">{{ a.modified_at }}</td>
+              <td class="text-right">
+                <div class="flex flex-col items-end gap-2">
+                  <div class="flex flex-wrap justify-end gap-2">
+                    <button
+                      class="rounded-lg border px-3 py-1 hover:bg-slate-50"
+                      data-group="{{ a.group }}"
+                      data-filename="{{ a.filename }}"
+                      onclick="openProcessedInfo(this)">
+                      Info
+                    </button>
+
+                    <button
+                      class="rounded-lg border px-3 py-1 hover:bg-slate-50"
+                      data-group="{{ a.group }}"
+                      data-filename="{{ a.filename }}"
+                      onclick="startExtractFeatures(this)">
+                      Extrair features
+                    </button>
+                  </div>
+
+                  <audio controls preload="none" class="h-8 w-64">
+                    <source src="{{ url_for('audio_processed.play_audio_processed', group=a.group, filename=a.filename) }}" type="audio/wav" />
+                  </audio>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Chart.js (CDN) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <!-- MODAL INFO -->
+  <div id="pInfoModal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/40" onclick="closePInfo()"></div>
+
+    <div class="relative mx-auto mt-10 w-[min(1100px,94vw)] rounded-2xl bg-white shadow-xl">
+      <div class="flex items-start justify-between border-b p-4">
+        <div>
+          <h2 class="text-lg font-semibold">Info do áudio processado</h2>
+          <p id="pInfoSubtitle" class="mt-0.5 text-xs text-slate-600 font-mono"></p>
+        </div>
+        <button class="rounded-lg border px-3 py-1 text-sm hover:bg-slate-50" onclick="closePInfo()">
+          Fechar
+        </button>
+      </div>
+
+      <div class="p-4 space-y-4">
+        <div class="rounded-xl border bg-slate-950 p-3">
+          <audio id="pInfoPlayer" controls class="w-full">
+            <source id="pInfoPlayerSrc" src="" type="audio/wav" />
+          </audio>
+        </div>
+
+        <div id="pInfoLoading" class="text-sm text-slate-600">Carregando...</div>
+
+        <div id="pInfoContent" class="hidden space-y-6">
+          <!-- Gráficos -->
+          <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div class="rounded-xl border p-3">
+              <div class="text-sm font-semibold">Waveform (amplitude vs tempo)</div>
+              <canvas id="waveChart" class="mt-2"></canvas>
+            </div>
+            <div class="rounded-xl border p-3">
+              <div class="text-sm font-semibold">Espectro (magnitude vs frequência)</div>
+              <canvas id="specChart" class="mt-2"></canvas>
+            </div>
+          </div>
+
+          <!-- Demografia -->
+          <div>
+            <div class="text-sm font-semibold">Demografia (manifest.csv)</div>
+            <div id="demoGrid" class="mt-2 grid grid-cols-1 gap-3 md:grid-cols-2"></div>
+          </div>
+
+          <!-- Propriedades WAV -->
+          <div>
+            <div class="text-sm font-semibold">Propriedades do arquivo</div>
+            <div id="propsGrid" class="mt-2 grid grid-cols-1 gap-3 md:grid-cols-2"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL LOGS (SSE) - FEATURES -->
+  <div id="fxModal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-black/40" onclick="closeFxModal()"></div>
+    <div class="relative mx-auto mt-16 w-[min(900px,92vw)] rounded-2xl bg-white shadow-xl">
+      <div class="flex items-center justify-between border-b p-4">
+        <div>
+          <h2 class="text-lg font-semibold">Extração de features — logs ao vivo</h2>
+          <p id="fxSubtitle" class="mt-0.5 text-xs text-slate-600 font-mono"></p>
+        </div>
+        <button class="rounded-lg border px-3 py-1 text-sm hover:bg-slate-50" onclick="closeFxModal()">
+          Fechar
+        </button>
+      </div>
+      <div class="p-4">
+        <div class="rounded-xl border bg-slate-950 p-4">
+          <pre id="fxLog" class="max-h-[60vh] overflow-auto text-xs text-slate-100"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // -------------------------
+    // Modal INFO com gráficos
+    // -------------------------
+    const pInfoModal = document.getElementById("pInfoModal");
+    const pInfoSubtitle = document.getElementById("pInfoSubtitle");
+    const pInfoLoading = document.getElementById("pInfoLoading");
+    const pInfoContent = document.getElementById("pInfoContent");
+
+    const pInfoPlayer = document.getElementById("pInfoPlayer");
+    const pInfoPlayerSrc = document.getElementById("pInfoPlayerSrc");
+
+    const demoGrid = document.getElementById("demoGrid");
+    const propsGrid = document.getElementById("propsGrid");
+
+    let waveChart = null;
+    let specChart = null;
+
+    function closePInfo() {
+      try { pInfoPlayer.pause(); } catch {}
+      if (waveChart) { waveChart.destroy(); waveChart = null; }
+      if (specChart) { specChart.destroy(); specChart = null; }
+      pInfoModal.classList.add("hidden");
+    }
+
+    function renderKvGrid(el, obj) {
+      el.innerHTML = "";
+      const entries = Object.entries(obj || {});
+      if (!entries.length) {
+        const d = document.createElement("div");
+        d.className = "text-sm text-slate-600";
+        d.textContent = "Sem dados.";
+        el.appendChild(d);
+        return;
+      }
+      for (const [k,v] of entries) {
+        const card = document.createElement("div");
+        card.className = "rounded-xl border bg-slate-50 p-3";
+        card.innerHTML = `
+          <div class="text-[11px] font-medium text-slate-600">${k}</div>
+          <div class="mt-1 font-mono text-xs text-slate-900 break-all">${String(v)}</div>
+        `;
+        el.appendChild(card);
+      }
+    }
+
+    function plotWaveform(t, y) {
+      const ctx = document.getElementById("waveChart");
+      waveChart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: t,
+          datasets: [{
+            label: "Amplitude",
+            data: y,
+            borderWidth: 1,
+            pointRadius: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          animation: false,
+          scales: {
+            x: { title: { display: true, text: "Tempo (s)" } },
+            y: { title: { display: true, text: "Amplitude" } }
+          }
+        }
+      });
+    }
+
+    function plotSpectrum(f, mag) {
+      const ctx = document.getElementById("specChart");
+      specChart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: f,
+          datasets: [{
+            label: "Magnitude",
+            data: mag,
+            borderWidth: 1,
+            pointRadius: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          animation: false,
+          scales: {
+            x: { title: { display: true, text: "Frequência (Hz)" } },
+            y: { title: { display: true, text: "Magnitude" } }
+          }
+        }
+      });
+    }
+
+    async function openProcessedInfo(btn) {
+      const group = btn.dataset.group;
+      const filename = btn.dataset.filename;
+
+      pInfoSubtitle.textContent = `${group}/${filename}`;
+      pInfoLoading.classList.remove("hidden");
+      pInfoContent.classList.add("hidden");
+      demoGrid.innerHTML = "";
+      propsGrid.innerHTML = "";
+
+      // player
+      const playUrl = `/audio-processed/play/${encodeURIComponent(group)}/${encodeURIComponent(filename)}`;
+      pInfoPlayerSrc.src = playUrl;
+      pInfoPlayer.load();
+
+      pInfoModal.classList.remove("hidden");
+
+      const infoUrl = `/audio-processed/info/${encodeURIComponent(group)}/${encodeURIComponent(filename)}`;
+      try {
+        const res = await fetch(infoUrl);
+        if (!res.ok) throw new Error("Falha ao carregar info");
+        const data = await res.json();
+
+        pInfoLoading.classList.add("hidden");
+        pInfoContent.classList.remove("hidden");
+
+        renderKvGrid(propsGrid, data.props);
+        renderKvGrid(demoGrid, data.demographics);
+
+        // gráficos
+        const wf = data?.plots?.waveform;
+        const sp = data?.plots?.spectrum;
+        if (wf && sp) {
+          plotWaveform(wf.t, wf.y);
+          plotSpectrum(sp.f, sp.mag);
+        }
+      } catch (e) {
+        pInfoLoading.textContent = "Erro ao carregar informações/gráficos.";
+        console.error(e);
+      }
+    }
+
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && !pInfoModal.classList.contains("hidden")) closePInfo();
+    });
+
+    // -------------------------
+    // Modal SSE: Extração features
+    // -------------------------
+    const fxModal = document.getElementById("fxModal");
+    const fxSubtitle = document.getElementById("fxSubtitle");
+    const fxLog = document.getElementById("fxLog");
+    let fxES = null;
+
+    function openFxModal(title) {
+      fxSubtitle.textContent = title;
+      fxLog.textContent = "";
+      fxModal.classList.remove("hidden");
+    }
+
+    function closeFxModal() {
+      try { if (fxES) fxES.close(); } catch {}
+      fxES = null;
+      fxModal.classList.add("hidden");
+    }
+
+    function appendFx(line) {
+      fxLog.textContent += line + "\n";
+      fxLog.scrollTop = fxLog.scrollHeight;
+    }
+
+    async function startExtractFeatures(btn) {
+      const group = btn.dataset.group;
+      const filename = btn.dataset.filename;
+
+      openFxModal(`${group}/${filename}`);
+      appendFx(">> iniciando extração...");
+
+      const res = await fetch(`/features/extract/${encodeURIComponent(group)}/${encodeURIComponent(filename)}`, {
+        method: "POST"
+      });
+
+      if (!res.ok) {
+        appendFx(">> erro ao iniciar.");
+        return;
+      }
+
+      const { run_id } = await res.json();
+      appendFx(`>> run_id: ${run_id}`);
+
+      fxES = new EventSource(`/features/stream/${run_id}`);
+
+      fxES.onmessage = (ev) => appendFx(ev.data);
+
+      fxES.addEventListener("done", () => {
+        appendFx(">> finalizado.");
+        fxES.close();
+        fxES = null;
+      });
+
+      fxES.onerror = () => {
+        appendFx(">> erro SSE / conexão interrompida.");
+        try { fxES.close(); } catch {}
+        fxES = null;
+      };
+    }
+
+    async function startExtractFeaturesBatch(group) {
+    openFxModal(`LOTE: ${group}`);
+    appendFx(">> iniciando extração em lote...");
+
+    const res = await fetch(`/features/extract/${encodeURIComponent(group)}`, { method: "POST" });
+    if (!res.ok) {
+      appendFx(">> erro ao iniciar lote.");
+      return;
+    }
+
+    const { run_id } = await res.json();
+    appendFx(`>> run_id: ${run_id}`);
+
+    fxES = new EventSource(`/features/stream/${run_id}`);
+
+    fxES.onmessage = (ev) => appendFx(ev.data);
+
+    fxES.addEventListener("done", () => {
+      appendFx(">> lote finalizado.");
+      fxES.close();
+      fxES = null;
+    });
+
+    fxES.onerror = () => {
+      appendFx(">> erro SSE / conexão interrompida.");
+      try { fxES.close(); } catch {}
+      fxES = null;
+    };
+  }
+
+  async function startExtractFeaturesBatchAll() {
+    // executa um grupo e depois o outro; 
+    await startExtractFeaturesBatch("HC_AH");
+    await startExtractFeaturesBatch("PD_AH");
+    // quando o primeiro terminar, o usuário pode fechar o modal ou acompanhar;    
+  }
+  </script>
+{% endblock %}
