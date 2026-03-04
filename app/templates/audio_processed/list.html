@@ -17,26 +17,25 @@
       </div>
 
       <div class="flex flex-wrap gap-2 text-sm items-center justify-end">
-        <!-- <span class="rounded-xl border bg-slate-50 px-3 py-1">HC_AH: <b>{{ counts["HC_AH"] }}</b></span>
-        <span class="rounded-xl border bg-slate-50 px-3 py-1">PD_AH: <b>{{ counts["PD_AH"] }}</b></span> -->
-
         <button
-          class="rounded-xl border bg-white px-3 py-1 hover:bg-slate-50"
-          onclick="startExtractFeaturesBatch('HC_AH')">
-          Extrair features (HC_AH)
+          class="rounded-xl border bg-white px-3 py-1 hover:bg-slate-50 font-medium text-indigo-600"
+          onclick="startExtractFeatures(null)">
+          Extrair features (Todos os Grupos)
         </button>
 
-        <button
-          class="rounded-xl border bg-white px-3 py-1 hover:bg-slate-50"
-          onclick="startExtractFeaturesBatch('PD_AH')">
-          Extrair features (PD_AH)
-        </button>
-
-        <button
-          class="rounded-xl border bg-white px-3 py-1 hover:bg-slate-50"
-          onclick="startExtractFeaturesBatchAll()">
-          Extrair features (tudo)
-        </button>
+        {% if features_ready %}
+          <a href="{{ url_for('features.list_features') }}"
+            class="rounded-xl bg-indigo-600 px-4 py-1 text-white hover:bg-indigo-700 transition-colors flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            Ver Datasets Extraídos
+          </a>
+          {% else %}
+          <span class="rounded-xl border bg-slate-50 px-3 py-1 text-slate-400 cursor-not-allowed" title="Extraia as features primeiro">
+            Datasets não disponíveis
+          </span>
+          {% endif %}
       </div>
 
     </div>
@@ -339,77 +338,60 @@
       fxLog.scrollTop = fxLog.scrollHeight;
     }
 
-    async function startExtractFeatures(btn) {
-      const group = btn.dataset.group;
-      const filename = btn.dataset.filename;
+    // Função Unificada de Extração
+    async function startExtractFeatures(target = null) {
+      let url = "/features/extract-all";
+      let title = "Extração Global (Todos os Grupos)";
 
-      openFxModal(`${group}/${filename}`);
-      appendFx(">> iniciando extração...");
-
-      const res = await fetch(`/features/extract/${encodeURIComponent(group)}/${encodeURIComponent(filename)}`, {
-        method: "POST"
-      });
-
-      if (!res.ok) {
-        appendFx(">> erro ao iniciar.");
-        return;
+      // Se 'target' for um elemento (botão individual), extrai dados dele
+      if (target && target.dataset) {
+        const group = target.dataset.group;
+        const filename = target.dataset.filename;
+        url = `/features/extract/${encodeURIComponent(group)}/${encodeURIComponent(filename)}`;
+        title = `Arquivo: ${filename}`;
       }
 
-      const { run_id } = await res.json();
-      appendFx(`>> run_id: ${run_id}`);
+      openFxModal(title);
+      appendFx(`>> Iniciando processo: ${new Date().toLocaleTimeString()}`);
 
-      fxES = new EventSource(`/features/stream/${run_id}`);
+      try {
+        const res = await fetch(url, { method: "POST" });
+        if (!res.ok) throw new Error("Erro na resposta do servidor");
 
-      fxES.onmessage = (ev) => appendFx(ev.data);
+        const { run_id } = await res.json();
+        appendFx(`>> run_id: ${run_id}`);
 
-      fxES.addEventListener("done", () => {
-        appendFx(">> finalizado.");
-        fxES.close();
-        fxES = null;
-      });
+        // Limpeza de conexão anterior se existir
+        if (fxES) fxES.close();
 
-      fxES.onerror = () => {
-        appendFx(">> erro SSE / conexão interrompida.");
-        try { fxES.close(); } catch {}
-        fxES = null;
-      };
+        fxES = new EventSource(`/features/stream/${run_id}`);
+
+        fxES.onmessage = (ev) => {
+          // Filtra mensagens vazias (keep-alive) para não sujar o log
+          if (ev.data.trim()) {
+            appendFx(ev.data);
+          }
+        };
+
+        fxES.addEventListener("done", () => {
+          appendFx("\n>> [SUCESSO] Processo finalizado com sucesso.");
+          if (fxES) fxES.close();
+          fxES = null;
+        });
+
+        fxES.onerror = () => {
+          // Verifica se a conexão fechou normalmente
+          if (fxES && fxES.readyState === EventSource.CLOSED) return;
+          
+          appendFx("\n>> [AVISO] Conexão encerrada ou tempo limite atingido.");
+          appendFx(">> O processamento pode continuar no servidor. Verifique os arquivos CSV em instantes.");
+          if (fxES) fxES.close();
+          fxES = null;
+        };
+
+      } catch (err) {
+        appendFx(`>> Erro ao iniciar: ${err.message}`);
+      }
     }
-
-    async function startExtractFeaturesBatch(group) {
-    openFxModal(`LOTE: ${group}`);
-    appendFx(">> iniciando extração em lote...");
-
-    const res = await fetch(`/features/extract/${encodeURIComponent(group)}`, { method: "POST" });
-    if (!res.ok) {
-      appendFx(">> erro ao iniciar lote.");
-      return;
-    }
-
-    const { run_id } = await res.json();
-    appendFx(`>> run_id: ${run_id}`);
-
-    fxES = new EventSource(`/features/stream/${run_id}`);
-
-    fxES.onmessage = (ev) => appendFx(ev.data);
-
-    fxES.addEventListener("done", () => {
-      appendFx(">> lote finalizado.");
-      fxES.close();
-      fxES = null;
-    });
-
-    fxES.onerror = () => {
-      appendFx(">> erro SSE / conexão interrompida.");
-      try { fxES.close(); } catch {}
-      fxES = null;
-    };
-  }
-
-  async function startExtractFeaturesBatchAll() {
-    // executa um grupo e depois o outro; 
-    await startExtractFeaturesBatch("HC_AH");
-    await startExtractFeaturesBatch("PD_AH");
-    // quando o primeiro terminar, o usuário pode fechar o modal ou acompanhar;    
-  }
   </script>
 {% endblock %}

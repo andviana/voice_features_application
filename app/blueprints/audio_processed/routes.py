@@ -127,10 +127,19 @@ def _iter_wavs(group_dir: Path) -> Iterable[Path]:
     # ordena por nome
     return sorted(group_dir.glob("*.wav"), key=lambda p: p.name.lower())
 
+def _get_paths_config():
+    """Centraliza as configurações de diretórios do app."""
+    return {
+        # "raw_root": Path(current_app.config["AUDIO_RAW_DIR"]).resolve(),
+        "data_root": Path(current_app.config["DATA_DIR"]).resolve(),
+    }
+
+
 
 @bp.get("/audio-processed")
 def list_audios_processed():
-    base = _audio_processed_root()
+    cfg = _get_paths_config()
+    base = _audio_processed_root()    
     items: list[AudioProps] = []
     counts = {}
 
@@ -161,12 +170,18 @@ def list_audios_processed():
                         compname="invalid",
                     )
                 )
+    
+    # Verificar se os CSVs de features já foram gerados
+    features_dir = cfg["data_root"] / "features"
+    hc_ready = (features_dir / "HC_AH" / "dataset_voz_completo.csv").exists()
+    pd_ready = (features_dir / "PD_AH" / "dataset_voz_completo.csv").exists()
 
     return render_template(
         "audio_processed/list.html",
         items=items,
         counts=counts,
         base=str(base),
+        features_ready=(hc_ready and pd_ready)
     )
 
 

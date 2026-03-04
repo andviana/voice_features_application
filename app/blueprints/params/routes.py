@@ -8,9 +8,6 @@ from . import bp
 service = ParamsService(ParamsRepository())
 
 def _format_params_for_table(obj):
-    print("-"*80)
-    print(obj)
-    print("-"*80)
     # Formatação técnica (unidades)
     return [
         {"key": "SR", "value": f"{obj.SR:,.0f}", "unit": "Hz", "desc": "Taxa de amostragem"},
@@ -27,9 +24,6 @@ def _format_params_for_table(obj):
 @bp.get("/params")
 def edit_params():
     obj = service.get()
-    print("edit_"*80)
-    print(obj)
-    print("-"*80)
     return render_template("params/edit.html", p=obj)
 
 
@@ -53,12 +47,8 @@ def update_params():
 
 @bp.get("/params/view")
 def view_params_table():
-    print('entoru no: params/viewparams/view... ')
     obj = service.get()
     rows = _format_params_for_table(obj)
-    print("rows_"*80)
-    print(rows)
-    print("-"*80)
     return render_template("params/view_table.html", rows=rows)
 
 
