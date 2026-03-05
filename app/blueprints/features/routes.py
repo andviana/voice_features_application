@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 from flask import render_template, jsonify, current_app, send_file, abort
 from pathlib import Path
+import pandas as pd
 
 from typing import Optional
 from . import bp
@@ -109,6 +110,7 @@ def list_features():
 
     return render_template("features/list_files.html", files=files_info)
 
+
 @bp.get("/features/download/<group>/<filename>")
 def download_features(group: str, filename: str):
     """Permite baixar o CSV para análise no Excel/Pandas."""
@@ -119,3 +121,61 @@ def download_features(group: str, filename: str):
         abort(404)
         
     return send_file(fpath, as_attachment=True)
+
+
+@bp.get("/features/view-details/<group>/<filename>")
+def view_dataset_details(group: str, filename: str):
+    """
+    Carrega o dataset e gera estatísticas descritivas completas.
+    """
+    base_data = Path(current_app.config["DATA_DIR"]).resolve()
+    fpath = (base_data / "features" / group / filename).resolve()
+    
+    if not fpath.exists():
+        abort(404)
+
+    try:
+        df = pd.read_csv(fpath)
+        
+        # Resumo básico
+        summary = {
+            "total_rows": len(df),
+            "total_cols": len(df.columns),
+            "filename": filename,
+            "group": group
+        }
+
+        # Estatísticas Descritivas (Apenas colunas numéricas)
+        numeric_df = df.select_dtypes(include=['number'])
+        
+        stats = numeric_df.agg([
+            'mean', 'median', 'std', 'var', 'min', 'max'
+        ]).transpose()
+
+        # Adicionando Quartis específicos
+        stats['Q1'] = numeric_df.quantile(0.25)
+        stats['Q2'] = numeric_df.quantile(0.5)
+        stats['Q3'] = numeric_df.quantile(0.75)
+        stats['IQR'] = stats['Q3'] - stats['Q1']
+
+        # Cálculo da Moda (Pandas retorna série, pegamos o primeiro valor)
+        stats['mode'] = numeric_df.mode().iloc[0]
+
+        # Renomear colunas para o template
+        stats.columns = [
+            'Média', 'Mediana', 'Desvio Padrão', 'Variância', 
+            'Mínimo', 'Máximo', 'Q1 (25%)', 'Q2 (50%)', 'Q3 (75%)', 'IQR', 'Moda'
+        ]
+        
+        # Converter para dicionário para facilitar a iteração no Jinja2
+        stats_dict = stats.to_dict('index')
+
+        return render_template(
+            "features/view_details.html",
+            summary=summary,
+            stats=stats_dict,
+            columns=df.columns.tolist(),
+            data=df.values.tolist()
+        )
+    except Exception as e:
+        return f"Erro ao processar o dataset: {str(e)}", 500

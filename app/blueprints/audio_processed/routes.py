@@ -113,11 +113,11 @@ def _compute_waveform_and_spectrum(wav_path: Path, max_points: int = 2000):
     return {
         "sr": int(sr),
         "waveform": {
-            "t": t_ds.tolist(),
+            "t": np.round(t_ds, 2).tolist(),
             "y": y_ds.tolist(),
         },
         "spectrum": {
-            "f": freqs_ds.tolist(),
+            "f": np.round(freqs_ds, 2).tolist(),
             "mag": mag_ds.tolist(),
         },
     }

@@ -34,6 +34,7 @@ def create_app():
     from .blueprints.audio_raw import bp as audio_raw_bp
     from .blueprints.audio_processed import bp as audio_processed_bp
     from .blueprints.features import bp as features_bp
+    from .blueprints.codes import bp as codes_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(params_bp)
@@ -41,6 +42,7 @@ def create_app():
     app.register_blueprint(audio_raw_bp)
     app.register_blueprint(audio_processed_bp)
     app.register_blueprint(features_bp)
+    app.register_blueprint(codes_bp)
 
     # Blueprints API (Smorest)
     from .blueprints.api import params_api, pipeline_api

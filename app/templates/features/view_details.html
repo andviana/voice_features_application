@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Detalhes: {{ summary.filename }}{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="rounded-2xl bg-white p-6 shadow-sm border border-slate-200">
+        <div class="flex justify-between items-start">
+            <div>
+                <h1 class="text-xl font-bold text-slate-900">Dataset: {{ summary.filename }}</h1>
+                <p class="text-sm text-slate-500">Grupo: <span class="font-mono">{{ summary.group }}</span></p>
+            </div>
+            <div class="flex gap-4">
+                <div class="text-center px-4 py-2 bg-indigo-50 rounded-xl">
+                    <div class="text-xs text-indigo-600 font-semibold uppercase">Linhas</div>
+                    <div class="text-xl font-bold">{{ summary.total_rows }}</div>
+                </div>
+                <div class="text-center px-4 py-2 bg-slate-50 rounded-xl">
+                    <div class="text-xs text-slate-600 font-semibold uppercase">Colunas</div>
+                    <div class="text-xl font-bold">{{ summary.total_cols }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="rounded-2xl bg-white p-6 shadow-sm border border-slate-200 overflow-hidden">
+        <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+            Estatísticas Descritivas
+        </h2>
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm text-left border-collapse">
+                <thead class="bg-slate-50 border-y border-slate-200">
+                    <tr>
+                        <th class="px-4 py-3 font-semibold text-slate-700">Característica</th>
+                        {% for col in ['Média', 'Variância', 'Desvio Padrão', 'Mínimo', 'Máximo', 'Q1 (25%)', 'Q2 (50%)', 'Q3 (75%)', 'IQR'] %}
+                        <th class="px-4 py-3 font-semibold text-slate-700">{{ col }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    {% for feature, values in stats.items() %}
+                    <tr class="hover:bg-slate-50 transition-colors">
+                        <td class="px-4 py-3 font-medium text-indigo-600">{{ feature }}</td>
+                        <td class="px-4 py-3">{{ "%.4f"|format(values['Média']) }}</td>                        
+                        <td class="px-4 py-3 text-xs text-slate-500">{{ "%.4e"|format(values['Variância']) }}</td>
+                        <td class="px-4 py-3">{{ "%.4f"|format(values['Desvio Padrão']) }}</td>
+                        <td class="px-4 py-3 text-red-500">{{ "%.4f"|format(values['Mínimo']) }}</td>
+                        <td class="px-4 py-3 text-green-600">{{ "%.4f"|format(values['Máximo']) }}</td>
+                        <td class="px-4 py-3">{{ "%.4f"|format(values['Q1 (25%)']) }}</td>
+                        <td class="px-4 py-3">{{ "%.4f"|format(values['Q2 (50%)']) }}</td>
+                        <td class="px-4 py-3">{{ "%.4f"|format(values['Q3 (75%)']) }}</td>
+                        <td class="px-4 py-3">{{ "%.4f"|format(values['IQR']) }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="rounded-2xl bg-white p-6 shadow-sm border border-slate-200">
+        <h2 class="text-lg font-semibold mb-4">Dados Brutos</h2>
+        <div class="overflow-x-auto max-h-[500px]">
+            <table class="w-full text-[11px] text-left border-collapse">
+                <thead class="bg-slate-900 text-white sticky top-0">
+                    <tr>
+                        {% for col in columns %}
+                        <th class="px-3 py-2 whitespace-nowrap">{{ col }}</th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200">
+                    {% for row in data %}
+                    <tr class="hover:bg-slate-50">
+                        {% for val in row %}
+                        <td class="px-3 py-2 whitespace-nowrap text-slate-600">
+                            {{ val if val is not none else '-' }}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

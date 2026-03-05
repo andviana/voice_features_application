@@ -103,8 +103,9 @@
   <div id="pInfoModal" class="fixed inset-0 z-50 hidden">
     <div class="absolute inset-0 bg-black/40" onclick="closePInfo()"></div>
 
-    <div class="relative mx-auto mt-10 w-[min(1100px,94vw)] rounded-2xl bg-white shadow-xl">
-      <div class="flex items-start justify-between border-b p-4">
+    <div class="relative mx-auto mt-10 w-[min(1100px,94vw)] max-h-[90vh] flex flex-col rounded-2xl bg-white shadow-xl">
+      
+      <div class="flex items-start justify-between border-b p-4 flex-shrink-0">
         <div>
           <h2 class="text-lg font-semibold">Info do áudio processado</h2>
           <p id="pInfoSubtitle" class="mt-0.5 text-xs text-slate-600 font-mono"></p>
@@ -114,7 +115,7 @@
         </button>
       </div>
 
-      <div class="p-4 space-y-4">
+      <div class="p-4 space-y-4 overflow-y-auto">
         <div class="rounded-xl border bg-slate-950 p-3">
           <audio id="pInfoPlayer" controls class="w-full">
             <source id="pInfoPlayerSrc" src="" type="audio/wav" />
@@ -125,7 +126,7 @@
 
         <div id="pInfoContent" class="hidden space-y-6">
           <!-- Gráficos -->
-          <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <div class="grid grid-cols-1 gap-4">
             <div class="rounded-xl border p-3">
               <div class="text-sm font-semibold">Waveform (amplitude vs tempo)</div>
               <canvas id="waveChart" class="mt-2"></canvas>
