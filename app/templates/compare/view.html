@@ -1,0 +1,288 @@
+{% extends "base.html" %}
+{% block title %}Comparação Raw vs Processed{% endblock %}
+
+{% block content %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<div class="grid grid-cols-1 gap-4 lg:grid-cols-[320px_1fr]">
+  <!-- Painel esquerdo -->
+  <aside class="rounded-2xl border bg-white p-4">
+    <div class="flex items-center justify-between">
+      <h2 class="text-sm font-semibold">Pacientes (áudios)</h2>
+      <input id="searchBox" class="w-40 rounded-lg border px-2 py-1 text-xs" placeholder="filtrar..." />
+    </div>
+
+    <div class="mt-4 space-y-4">
+      {% for group, items in patients.items() %}
+        <div>
+          <div class="text-xs font-semibold text-slate-600">{{ group }}</div>
+          <div class="mt-2 max-h-[36vh] overflow-auto rounded-xl border">
+            {% for fn in items %}
+              <button
+                class="w-full border-b px-3 py-2 text-left text-xs hover:bg-slate-50 patientBtn"
+                data-group="{{ group }}"
+                data-filename="{{ fn }}"
+                onclick="loadPatient(this)">
+                <span class="font-mono">{{ fn }}</span>
+              </button>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </aside>
+
+  <!-- Painel direito -->
+  <section class="rounded-2xl border bg-white p-4">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h1 class="text-lg font-semibold">Detalhes do paciente</h1>
+        <p id="selSubtitle" class="mt-1 text-xs text-slate-600 font-mono">Selecione um áudio à esquerda</p>
+      </div>
+    </div>
+
+    <div id="loading" class="mt-4 text-sm text-slate-600 hidden">Carregando...</div>
+
+    <div id="content" class="mt-4 hidden space-y-6">
+
+      <!-- Players -->
+      <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div class="rounded-xl border p-3">
+          <div class="text-sm font-semibold">Áudio RAW</div>
+          <audio id="rawPlayer" controls class="mt-2 w-full">
+            <source id="rawSrc" src="" type="audio/wav" />
+          </audio>
+        </div>
+        <div class="rounded-xl border p-3">
+          <div class="text-sm font-semibold">Áudio PROCESSED</div>
+          <audio id="procPlayer" controls class="mt-2 w-full">
+            <source id="procSrc" src="" type="audio/wav" />
+          </audio>
+        </div>
+      </div>
+
+      <!-- Demografia -->
+      <div class="rounded-xl border p-3">
+        <div class="text-sm font-semibold">Dados demográficos</div>
+        <div id="demoRow" class="mt-2 grid grid-cols-1 gap-3 md:grid-cols-3"></div>
+      </div>
+
+      <!-- Waveform -->
+      <div class="grid grid-cols-1 gap-4 ">
+        <div class="rounded-xl border p-3">
+          <div class="text-sm font-semibold">Waveform RAW (amplitude vs tempo)</div>
+          <canvas id="waveRaw" class="mt-2"></canvas>
+        </div>
+        <div class="rounded-xl border p-3">
+          <div class="text-sm font-semibold">Waveform PROCESSED (amplitude vs tempo)</div>
+          <canvas id="waveProc" class="mt-2"></canvas>
+        </div>
+      </div>
+
+      <!-- Espectro -->
+      <div class="grid grid-cols-1 gap-4 ">
+        <div class="rounded-xl border p-3">
+          <div class="text-sm font-semibold">Espectro RAW (magnitude vs frequência)</div>
+          <canvas id="specRaw" class="mt-2"></canvas>
+        </div>
+        <div class="rounded-xl border p-3">
+          <div class="text-sm font-semibold">Espectro PROCESSED (magnitude vs frequência)</div>
+          <canvas id="specProc" class="mt-2"></canvas>
+        </div>
+      </div>
+
+      <!-- Props lado a lado -->
+      <div class="rounded-xl border p-3">
+        <div class="text-sm font-semibold">Propriedades (RAW vs PROCESSED)</div>
+        <div class="mt-3 overflow-hidden rounded-xl border">
+          <table class="w-full text-xs">
+            <thead class="bg-slate-50">
+              <tr class="[&>th]:px-3 [&>th]:py-2 text-left">
+                <th>Campo</th>
+                <th>RAW</th>
+                <th>PROCESSED</th>
+              </tr>
+            </thead>
+            <tbody id="propsTable" class="divide-y"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Features mean/std -->
+      <div class="rounded-xl border p-3">
+        <div class="text-sm font-semibold">Features extraídas (mean / std)</div>
+        <div class="mt-3 overflow-hidden rounded-xl border">
+          <table class="w-full text-xs">
+            <thead class="bg-slate-50">
+              <tr class="[&>th]:px-3 [&>th]:py-2 text-left">
+                <th>Feature</th>
+                <th>Mean</th>
+                <th>Std</th>
+              </tr>
+            </thead>
+            <tbody id="featTable" class="divide-y"></tbody>
+          </table>
+        </div>
+        <p class="mt-2 text-[11px] text-slate-500">
+          NaN e 0 aparecem em vermelho para facilitar triagem.
+        </p>
+      </div>
+
+    </div>
+  </section>
+</div>
+
+<script>
+  // ---- search filter
+  const searchBox = document.getElementById("searchBox");
+  searchBox.addEventListener("input", () => {
+    const q = searchBox.value.toLowerCase().trim();
+    document.querySelectorAll(".patientBtn").forEach(btn => {
+      const name = btn.dataset.filename.toLowerCase();
+      btn.style.display = name.includes(q) ? "" : "none";
+    });
+  });
+
+  // ---- charts
+  let cWaveRaw=null, cWaveProc=null, cSpecRaw=null, cSpecProc=null;
+
+  function destroyCharts() {
+    [cWaveRaw,cWaveProc,cSpecRaw,cSpecProc].forEach(c => { if (c) c.destroy(); });
+    cWaveRaw=cWaveProc=cSpecRaw=cSpecProc=null;
+  }
+
+  function mkLineChart(canvasId, labels, data, xLabel, yLabel, label) {
+    const ctx = document.getElementById(canvasId);
+    return new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: labels,
+        datasets: [{ label, data, borderWidth: 1, pointRadius: 0 }]
+      },
+      options: {
+        responsive: true,
+        animation: false,
+        scales: {
+          x: { title: { display: true, text: xLabel } },
+          y: { title: { display: true, text: yLabel } }
+        }
+      }
+    });
+  }
+
+  // ---- helpers
+  function kvCard(k, v) {
+    const d = document.createElement("div");
+    d.className = "rounded-xl border bg-slate-50 p-3";
+    d.innerHTML = `
+      <div class="text-[11px] font-medium text-slate-600">${k}</div>
+      <div class="mt-1 font-mono text-xs text-slate-900 break-all">${v ?? ""}</div>
+    `;
+    return d;
+  }
+
+  function isBad(val) {
+    if (val === null || val === undefined) return false;
+    const s = String(val).trim().toLowerCase();
+    if (s === "nan") return true;
+    const n = Number(val);
+    return Number.isFinite(n) && n === 0;
+  }
+
+  function fmt(val) {
+    if (val === null || val === undefined) return "";
+    if (typeof val === "number") {
+      if (!Number.isFinite(val)) return "NaN";
+      return String(val);
+    }
+    return String(val);
+  }
+
+  async function loadPatient(btn) {
+    const group = btn.dataset.group;
+    const filename = btn.dataset.filename;
+
+    document.getElementById("selSubtitle").textContent = `${group}/${filename}`;
+    document.getElementById("loading").classList.remove("hidden");
+    document.getElementById("content").classList.add("hidden");
+    destroyCharts();
+
+    const res = await fetch(`/compare/info/${encodeURIComponent(group)}/${encodeURIComponent(filename)}`);
+    if (!res.ok) {
+      document.getElementById("loading").textContent = "Erro ao carregar.";
+      return;
+    }
+    let data;
+    try {
+        data = await res.json();
+    } catch (e) {
+        console.error("Falha parse JSON:", e);
+        const txt = await res.text();
+        console.error("Resposta bruta:", txt.slice(0, 500));
+        document.getElementById("loading").textContent = "Erro ao interpretar resposta (JSON inválido).";
+        return;
+    }
+
+    // players
+    const rawSrc = document.getElementById("rawSrc");
+    const procSrc = document.getElementById("procSrc");
+    rawSrc.src = data.raw.play_url;
+    procSrc.src = data.processed.play_url;
+    document.getElementById("rawPlayer").load();
+    document.getElementById("procPlayer").load();
+
+    // demographics
+    const demoRow = document.getElementById("demoRow");
+    demoRow.innerHTML = "";
+    const hi = data?.demographics?.highlight || {};
+    demoRow.appendChild(kvCard("label", hi.label ?? ""));
+    demoRow.appendChild(kvCard("age", hi.age ?? ""));
+    demoRow.appendChild(kvCard("sex", hi.sex ?? ""));
+
+    // charts
+    const wfR = data.raw.plots.waveform;
+    const wfP = data.processed.plots.waveform;
+    const spR = data.raw.plots.spectrum;
+    const spP = data.processed.plots.spectrum;
+
+    cWaveRaw = mkLineChart("waveRaw", wfR?.t || [], wfR?.y || [], "Tempo (s)", "Amplitude", "raw");
+    cWaveProc = mkLineChart("waveProc", wfP?.t || [], wfP?.y || [], "Tempo (s)", "Amplitude", "processed");
+    cSpecRaw = mkLineChart("specRaw", spR?.f || [], spR?.mag || [], "Frequência (Hz)", "Magnitude", "raw");
+    cSpecProc = mkLineChart("specProc", spP?.f || [], spP?.mag || [], "Frequência (Hz)", "Magnitude", "processed");
+
+    // props side-by-side
+    const propsKeys = ["compname","duration_sec","n_channels","sample_width_bytes","comptype","n_frames","sample_rate_hz","size_bytes"];
+    const propsTable = document.getElementById("propsTable");
+    propsTable.innerHTML = "";
+    for (const k of propsKeys) {
+      const tr = document.createElement("tr");
+      tr.className = "[&>td]:px-3 [&>td]:py-2";
+      tr.innerHTML = `
+        <td class="font-mono">${k}</td>
+        <td class="font-mono">${fmt(data.raw.props[k])}</td>
+        <td class="font-mono">${fmt(data.processed.props[k])}</td>
+      `;
+      propsTable.appendChild(tr);
+    }
+
+    // features mean/std
+    const featTable = document.getElementById("featTable");
+    featTable.innerHTML = "";
+    (data.features || []).forEach(r => {
+      const meanBad = isBad(r.mean);
+      const stdBad = isBad(r.std);
+      const tr = document.createElement("tr");
+      tr.className = "[&>td]:px-3 [&>td]:py-2";
+      tr.innerHTML = `
+        <td class="font-mono">${r.feature}</td>
+        <td class="font-mono ${meanBad ? "text-red-600 font-semibold" : ""}">${fmt(r.mean)}</td>
+        <td class="font-mono ${stdBad ? "text-red-600 font-semibold" : ""}">${fmt(r.std)}</td>
+      `;
+      featTable.appendChild(tr);
+    });
+
+    document.getElementById("loading").classList.add("hidden");
+    document.getElementById("content").classList.remove("hidden");
+  }
+</script>
+{% endblock %}
