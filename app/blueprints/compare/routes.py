@@ -191,6 +191,45 @@ def _plots_waveform_spectrum(wav_path: Path, max_points: int = 2000) -> dict:
     }
 
 
+def _compute_spectrogram(wav_path: Path, max_time_bins: int = 180, max_freq_bins: int = 128) -> dict:
+    """
+    Gera dados leves para plotar espectrograma STFT:
+    - x: tempos
+    - y: frequências
+    - z: matriz em dB (freq x tempo)
+    """
+    y, sr = librosa.load(str(wav_path), sr=None, mono=True)
+    if y.size == 0 or sr is None or sr == 0:
+        return {"times": [], "freqs": [], "z": []}
+
+    n_fft = 1024
+    hop_length = 256
+
+    S = np.abs(librosa.stft(y, n_fft=n_fft, hop_length=hop_length)) ** 2
+    S_db = librosa.power_to_db(S, ref=np.max)
+
+    freqs = librosa.fft_frequencies(sr=sr, n_fft=n_fft)
+    times = librosa.frames_to_time(np.arange(S_db.shape[1]), sr=sr, hop_length=hop_length, n_fft=n_fft)
+
+    # Downsample temporal
+    if S_db.shape[1] > max_time_bins:
+        tidx = np.linspace(0, S_db.shape[1] - 1, num=max_time_bins).astype(int)
+        S_db = S_db[:, tidx]
+        times = times[tidx]
+
+    # Downsample frequencial
+    if S_db.shape[0] > max_freq_bins:
+        fidx = np.linspace(0, S_db.shape[0] - 1, num=max_freq_bins).astype(int)
+        S_db = S_db[fidx, :]
+        freqs = freqs[fidx]
+
+    return {
+        "times": times.tolist(),
+        "freqs": freqs.tolist(),
+        "z": S_db.tolist(),  # matriz [freq][tempo]
+    }
+
+
 def _load_manifest_row(filename: str) -> dict:
     manifest = (_data_root() / "metadata" / "manifest.csv").resolve()
     if not manifest.exists():
@@ -276,9 +315,23 @@ def _pair_features_mean_std(row: pd.Series) -> list[dict]:
     stds = {}
 
     for k, v in data.items():
-        if k == "file_name":
+        if k == "file_name" or k == "group":
             continue
         kl = str(k).lower()
+
+        # lista de chaves que devem ser verificadas
+        keys_to_check = {
+            "f0_min_hz", "f0_max_hz", "f0_cv",
+            "hnr_mean_db",
+            "jitter_local", "jitter_rap", "jitter_ppq5",
+            "shimmer_local", "shimmer_apq3", "shimmer_apq5", "shimmer_apq11",
+            "tsallis_sq_amp", "shannon_s1_amp",
+            "tsallis_sq_f0", "shannon_s1_f0"
+        }
+
+        # exemplo de uso
+        if k in keys_to_check:
+            means[k] = (k, v)
 
         # casos típicos: f1_mean_hz, f1_std_hz, mfcc_01_mean, mfcc_01_std, etc.
         if "_mean" in kl:
@@ -341,11 +394,17 @@ def compare_info(group: str, filename: str):
         print("4) Reading PROCESSED properties...")
         proc_props = _read_wav_props(processed_path, group)
 
-        print("5) Computing RAW plots (waveform + spectrum)...")
+        print("5.1) Computing RAW plots (waveform + spectrum)...")
         raw_plots = _plots_waveform_spectrum(raw_path)
 
-        print("6) Computing PROCESSED plots (waveform + spectrum)...")
+        print("5.2) Computing PROCESSED plots (waveform + spectrum)...")
         proc_plots = _plots_waveform_spectrum(processed_path)
+
+        print("6.1) Computing RAW spectrogram...")
+        raw_specgram = _compute_spectrogram(raw_path)
+
+        print("6.2) Computing PROCESSED spectrogram...")
+        proc_specgram = _compute_spectrogram(processed_path)
 
         print("7) Loading demographics...")
         demo = _load_manifest_row(raw_path.name)
@@ -384,11 +443,13 @@ def compare_info(group: str, filename: str):
             "raw": {
                 "props": asdict(raw_props),
                 "plots": raw_plots,
+                "spectrogram": raw_specgram,
                 "play_url": f"/compare/play/raw/{group}/{raw_path.name}",
             },
             "processed": {
                 "props": asdict(proc_props),
                 "plots": proc_plots,
+                "spectrogram": proc_specgram,
                 "play_url": f"/compare/play/processed/{group}/{processed_path.name}",
             },
             "features": features,

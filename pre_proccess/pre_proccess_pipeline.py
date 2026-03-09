@@ -14,7 +14,13 @@ def executar_pipeline(input_path, output_path, target_sr=48000, duration=2.5):
     Pipeline estrito conforme Plano de Pesquisa 4.1.
     Nota: Frequência padrão de 48kHz para o microfone Samson Q2U.
     """
-    # 1. Carregamento e Conversão para Mono (Item 4.1.1)
+
+    # 1. Identificar metadados originais (Subtipo/Bit Depth)
+    with sf.SoundFile(input_path) as f:
+        original_subtype = f.subtype  # Ex: 'PCM_24', 'FLOAT', 'PCM_16'
+        original_format = f.format
+
+    # 1.1 Carregamento e Conversão para Mono (Item 4.1.1)
     y, sr = librosa.load(input_path, sr=target_sr, mono=False)
     y = ensure_mono(y)
     
@@ -36,7 +42,15 @@ def executar_pipeline(input_path, output_path, target_sr=48000, duration=2.5):
        
     # Salva o áudio processado
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
-    sf.write(output_path, y_final, target_sr)
+
+    target_format = 'WAVEX'
+
+    sf.write(
+        output_path, 
+        y_final, 
+        target_sr, 
+        format=target_format,
+        subtype=original_subtype)
     
     # 4. Log de consistência
     info = analisar_amostra(y_final, target_sr)

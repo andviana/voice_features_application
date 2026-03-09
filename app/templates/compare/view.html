@@ -91,6 +91,18 @@
         </div>
       </div>
 
+        <!-- Espectrograma -->
+        <div class="grid grid-cols-1 gap-4 ">
+        <div class="rounded-xl border p-3">
+            <div class="text-sm font-semibold">Espectrograma RAW (STFT)</div>
+            <canvas id="specgramRaw" class="mt-2"></canvas>
+        </div>
+        <div class="rounded-xl border p-3">
+            <div class="text-sm font-semibold">Espectrograma PROCESSED (STFT)</div>
+            <canvas id="specgramProc" class="mt-2"></canvas>
+        </div>
+        </div>
+
       <!-- Props lado a lado -->
       <div class="rounded-xl border p-3">
         <div class="text-sm font-semibold">Propriedades (RAW vs PROCESSED)</div>
@@ -145,10 +157,84 @@
 
   // ---- charts
   let cWaveRaw=null, cWaveProc=null, cSpecRaw=null, cSpecProc=null;
+  let specgramRawCanvas = null, specgramProcCanvas = null;
+
 
   function destroyCharts() {
     [cWaveRaw,cWaveProc,cSpecRaw,cSpecProc].forEach(c => { if (c) c.destroy(); });
     cWaveRaw=cWaveProc=cSpecRaw=cSpecProc=null;
+
+    // limpa espectrogramas desenhados manualmente
+    const rawCanvas = document.getElementById("specgramRaw");
+    const procCanvas = document.getElementById("specgramProc");
+    if (rawCanvas) {
+        const ctx = rawCanvas.getContext("2d");
+        ctx.clearRect(0, 0, rawCanvas.width, rawCanvas.height);
+    }
+    if (procCanvas) {
+        const ctx = procCanvas.getContext("2d");
+        ctx.clearRect(0, 0, procCanvas.width, procCanvas.height);
+    }
+  }
+
+  function drawSpectrogram(canvasId, spec) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !spec || !spec.z || !spec.z.length) return;
+
+    const ctx = canvas.getContext("2d");
+
+    const z = spec.z; // [freq][time]
+    const nFreq = z.length;
+    const nTime = z[0]?.length || 0;
+    if (!nFreq || !nTime) return;
+
+    const width = canvas.clientWidth || 500;
+    const height = 260;
+
+    canvas.width = width;
+    canvas.height = height;
+
+    // min/max para escala de cor
+    let min = Infinity;
+    let max = -Infinity;
+    for (let i = 0; i < nFreq; i++) {
+      for (let j = 0; j < nTime; j++) {
+        const v = z[i][j];
+        if (v < min) min = v;
+        if (v > max) max = v;
+      }
+    }
+    const range = Math.max(max - min, 1e-6);
+
+    const cellW = width / nTime;
+    const cellH = height / nFreq;
+
+    function colorMap(v) {
+      const x = (v - min) / range; // 0..1
+      // colormap simples: azul -> ciano -> amarelo -> vermelho
+      const r = Math.floor(255 * Math.max(0, Math.min(1, 1.5 * x)));
+      const g = Math.floor(255 * Math.max(0, Math.min(1, 1.5 * (1 - Math.abs(x - 0.5) * 2))));
+      const b = Math.floor(255 * Math.max(0, Math.min(1, 1.2 * (1 - x))));
+      return `rgb(${r},${g},${b})`;
+    }
+
+    // desenha freq baixa embaixo
+    for (let fi = 0; fi < nFreq; fi++) {
+      for (let ti = 0; ti < nTime; ti++) {
+        const v = z[fi][ti];
+        ctx.fillStyle = colorMap(v);
+        ctx.fillRect(
+          ti * cellW,
+          height - (fi + 1) * cellH,
+          Math.ceil(cellW),
+          Math.ceil(cellH)
+        );
+      }
+    }
+
+    // borda
+    ctx.strokeStyle = "#CBD5E1";
+    ctx.strokeRect(0, 0, width, height);
   }
 
   function mkLineChart(canvasId, labels, data, xLabel, yLabel, label) {
@@ -249,6 +335,11 @@
     cWaveProc = mkLineChart("waveProc", wfP?.t || [], wfP?.y || [], "Tempo (s)", "Amplitude", "processed");
     cSpecRaw = mkLineChart("specRaw", spR?.f || [], spR?.mag || [], "Frequência (Hz)", "Magnitude", "raw");
     cSpecProc = mkLineChart("specProc", spP?.f || [], spP?.mag || [], "Frequência (Hz)", "Magnitude", "processed");
+
+    const sgR = data.raw.spectrogram;
+    const sgP = data.processed.spectrogram;
+    drawSpectrogram("specgramRaw", sgR);
+    drawSpectrogram("specgramProc", sgP);
 
     // props side-by-side
     const propsKeys = ["compname","duration_sec","n_channels","sample_width_bytes","comptype","n_frames","sample_rate_hz","size_bytes"];

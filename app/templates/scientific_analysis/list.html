@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}Análise Científica{% endblock %}
+
+{% block content %}
+  <div class="rounded-2xl bg-white p-6 shadow-sm">
+    <div class="mb-6">
+      <h1 class="text-2xl font-semibold">Análise Científica de Áudio</h1>
+      <p class="mt-2 text-sm text-slate-600">
+        Selecione um paciente para abrir a página detalhada com comparação raw vs processed e gráficos diagnósticos.
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+      {% for group, items in audios.items() %}
+        <div class="rounded-2xl border bg-slate-50 p-4">
+          <h2 class="text-lg font-semibold">{{ group }}</h2>
+          <div class="mt-4 max-h-[60vh] overflow-auto rounded-xl border bg-white">
+            {% for audio in items %}
+              <a
+                href="{{ url_for('scientific_analysis.patient_page', group=group, filename=audio) }}"
+                class="block border-b px-4 py-3 font-mono text-xs hover:bg-blue-50">
+                {{ audio }}
+              </a>
+            {% endfor %}
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+{% endblock %}
