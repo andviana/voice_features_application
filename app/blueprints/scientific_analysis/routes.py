@@ -70,25 +70,17 @@ def _read_wav_props(path: Path, group: str) -> AudioProps:
 
     info = sf.info(str(path))
 
-    # channels
     n_channels = int(info.channels)
-
-    # sample rate
     sr = int(info.samplerate)
-
-    # frames
     n_frames = int(info.frames)
 
-    # duração
     duration = float(info.duration) if info.duration is not None else (
         n_frames / float(sr) if sr else 0.0
     )
 
-    # subtype / format
     compname = str(info.subtype) if info.subtype else ""
     comptype = str(info.format) if info.format else ""
 
-    # sample width (bytes) - aproximação a partir do subtipo
     subtype_bits_map = {
         "PCM_U8": 8,
         "PCM_S8": 8,
@@ -271,42 +263,85 @@ def _features_csv_for_group(group: str) -> Path:
 
 
 def _pair_features(row: pd.Series):
+
     data = {k: _sanitize(v) for k, v in row.to_dict().items()}
 
     used = set()
     paired = []
     single = []
 
+    IGNORE_COLUMNS = {"file_name", "group"}
+
     for k, v in data.items():
-        if k == "file_name":
+
+        if k in IGNORE_COLUMNS:
             continue
+
         lk = k.lower()
 
         if "_mean" in lk:
+
             std_key = k.replace("_mean_hz", "_std_hz").replace("_mean", "_std")
             base = lk.replace("_mean_hz", "").replace("_mean", "")
-            paired.append({
-                "feature": base,
-                "mean": data.get(k),
-                "std": data.get(std_key),
-                "mean_key": k,
-                "std_key": std_key if std_key in data else None,
-            })
-            used.add(k)
+
             if std_key in data:
+
+                paired.append({
+                    "feature": base,
+                    "mean": data.get(k),
+                    "std": data.get(std_key),
+                    "mean_key": k,
+                    "std_key": std_key,
+                })
+
+                used.add(k)
                 used.add(std_key)
 
+            else:
+                # mean sem std → vai para single
+                single.append({
+                    "feature": base,
+                    "value": data.get(k)
+                })
+
+                used.add(k)
+
     for k, v in data.items():
-        if k == "file_name" or k in used:
+
+        if k in IGNORE_COLUMNS:
             continue
+
+        if k in used:
+            continue
+
         single.append({
             "feature": k,
-            "value": v,
+            "value": v
         })
 
     paired.sort(key=lambda x: x["feature"])
     single.sort(key=lambda x: x["feature"])
+
     return paired, single
+
+
+def _safe_max(values, default=1.0):
+    vals = [float(v) for v in values if v is not None and np.isfinite(v)]
+    return max(vals) if vals else default
+
+
+def _safe_min(values, default=0.0):
+    vals = [float(v) for v in values if v is not None and np.isfinite(v)]
+    return min(vals) if vals else default
+
+
+def _flatten_2d(z):
+    out = []
+    for row in z:
+        for v in row:
+            if v is not None and np.isfinite(v):
+                out.append(float(v))
+    return out
 
 
 @bp.get("/")
@@ -349,6 +384,27 @@ def patient_data(group: str, filename: str):
             if not hit.empty:
                 paired_features, single_features = _pair_features(hit.iloc[0])
 
+    wave_raw = _waveform(y_raw, sr_raw)
+    wave_proc = _waveform(y_proc, sr_proc)
+
+    spec_raw = _spectrum(y_raw, sr_raw)
+    spec_proc = _spectrum(y_proc, sr_proc)
+
+    specgram_raw = _spectrogram(y_raw, sr_raw)
+    specgram_proc = _spectrogram(y_proc, sr_proc)
+
+    psd_raw = _psd(y_raw, sr_raw)
+    psd_proc = _psd(y_proc, sr_proc)
+
+    psd_f0_raw = _psd_zoom_f0(y_raw, sr_raw, max_hz=500.0)
+    psd_f0_proc = _psd_zoom_f0(y_proc, sr_proc, max_hz=500.0)
+
+    auto_raw = _autocorr(y_raw, sr_raw)
+    auto_proc = _autocorr(y_proc, sr_proc)
+
+    hist_raw = _amplitude_hist(y_raw)
+    hist_proc = _amplitude_hist(y_proc)
+
     payload = {
         "group": group,
         "filename": filename,
@@ -356,29 +412,104 @@ def patient_data(group: str, filename: str):
         "raw": {
             "play_url": f"/scientific-analysis/play/raw/{group}/{filename}",
             "props": raw_props,
-            "waveform": _waveform(y_raw, sr_raw),
-            "spectrum": _spectrum(y_raw, sr_raw),
-            "spectrogram": _spectrogram(y_raw, sr_raw),
-            "psd": _psd(y_raw, sr_raw),
-            "psd_f0": _psd_zoom_f0(y_raw, sr_raw, max_hz=500.0),
-            "autocorr": _autocorr(y_raw, sr_raw),
-            "hist": _amplitude_hist(y_raw),
+            "waveform": wave_raw,
+            "spectrum": spec_raw,
+            "spectrogram": specgram_raw,
+            "psd": psd_raw,
+            "psd_f0": psd_f0_raw,
+            "autocorr": auto_raw,
+            "hist": hist_raw,
         },
         "processed": {
             "play_url": f"/scientific-analysis/play/processed/{group}/{filename}",
             "props": proc_props,
-            "waveform": _waveform(y_proc, sr_proc),
-            "spectrum": _spectrum(y_proc, sr_proc),
-            "spectrogram": _spectrogram(y_proc, sr_proc),
-            "psd": _psd(y_proc, sr_proc),
-            "psd_f0": _psd_zoom_f0(y_proc, sr_proc, max_hz=500.0),
-            "autocorr": _autocorr(y_proc, sr_proc),
-            "hist": _amplitude_hist(y_proc),
+            "waveform": wave_proc,
+            "spectrum": spec_proc,
+            "spectrogram": specgram_proc,
+            "psd": psd_proc,
+            "psd_f0": psd_f0_proc,
+            "autocorr": auto_proc,
+            "hist": hist_proc,
         },
         "filter_response": _butter_response(sr_raw, cutoff=80.0, order=4),
         "features": {
             "paired": paired_features,
             "single": single_features,
+        },
+        "ranges": {
+            "waveform": {
+                "x": [0, _safe_max([
+                    wave_raw["x"][-1] if wave_raw["x"] else 0,
+                    wave_proc["x"][-1] if wave_proc["x"] else 0,
+                ], 1.0)],
+                "y": [
+                    _safe_min([
+                        min(wave_raw["y"]) if wave_raw["y"] else 0,
+                        min(wave_proc["y"]) if wave_proc["y"] else 0,
+                    ], -1.0),
+                    _safe_max([
+                        max(wave_raw["y"]) if wave_raw["y"] else 1,
+                        max(wave_proc["y"]) if wave_proc["y"] else 1,
+                    ], 1.0),
+                ],
+            },
+            "spectrum": {
+                "x": [0, _safe_max([
+                    spec_raw["x"][-1] if spec_raw["x"] else 0,
+                    spec_proc["x"][-1] if spec_proc["x"] else 0,
+                ], 1000.0)],
+                "y": [
+                    0,
+                    _safe_max([
+                        max(spec_raw["y"]) if spec_raw["y"] else 1,
+                        max(spec_proc["y"]) if spec_proc["y"] else 1,
+                    ], 1.0),
+                ],
+            },
+            "spectrogram": {
+                "x": [0, _safe_max([
+                    specgram_raw["x"][-1] if specgram_raw["x"] else 0,
+                    specgram_proc["x"][-1] if specgram_proc["x"] else 0,
+                ], 1.0)],
+                "y": [0, _safe_max([
+                    specgram_raw["y"][-1] if specgram_raw["y"] else 0,
+                    specgram_proc["y"][-1] if specgram_proc["y"] else 0,
+                ], 4000.0)],
+                "z": [
+                    _safe_min(_flatten_2d(specgram_raw["z"]) + _flatten_2d(specgram_proc["z"]), -100.0),
+                    _safe_max(_flatten_2d(specgram_raw["z"]) + _flatten_2d(specgram_proc["z"]), 0.0),
+                ],
+            },
+            "psd_f0": {
+                "x": [0, 500],
+                "y": [
+                    _safe_min(
+                        [v for v in psd_f0_raw["y"] if v > 0] + [v for v in psd_f0_proc["y"] if v > 0],
+                        1e-12
+                    ),
+                    _safe_max(psd_f0_raw["y"] + psd_f0_proc["y"], 1.0),
+                ],
+            },
+            "autocorr": {
+                "x": [0, _safe_max([
+                    auto_raw["x"][-1] if auto_raw["x"] else 0,
+                    auto_proc["x"][-1] if auto_proc["x"] else 0,
+                ], 0.05)],
+                "y": [
+                    _safe_min(auto_raw["y"] + auto_proc["y"], -1.0),
+                    _safe_max(auto_raw["y"] + auto_proc["y"], 1.0),
+                ],
+            },
+            "hist": {
+                "x": [
+                    _safe_min(hist_raw["x"] + hist_proc["x"], -1.0),
+                    _safe_max(hist_raw["x"] + hist_proc["x"], 1.0),
+                ],
+                "y": [
+                    0,
+                    _safe_max(hist_raw["y"] + hist_proc["y"], 1.0),
+                ],
+            },
         },
     }
 

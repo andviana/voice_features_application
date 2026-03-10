@@ -10,15 +10,23 @@
       </p>
     </div>
 
+    <div class="flex items-center justify-between mb-2">
+      <h2 class="text-sm font-semibold">Pacientes (áudios)</h2>
+      <input id="searchBox" class="w-40 rounded-lg border px-2 py-1 text-xs" placeholder="filtrar..." />
+    </div>
+    
     <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
       {% for group, items in audios.items() %}
         <div class="rounded-2xl border bg-slate-50 p-4">
           <h2 class="text-lg font-semibold">{{ group }}</h2>
+          
           <div class="mt-4 max-h-[60vh] overflow-auto rounded-xl border bg-white">
             {% for audio in items %}
               <a
                 href="{{ url_for('scientific_analysis.patient_page', group=group, filename=audio) }}"
-                class="block border-b px-4 py-3 font-mono text-xs hover:bg-blue-50">
+                class="block border-b px-4 py-3 font-mono text-xs hover:bg-blue-50 patientBtn"
+                data-filename="{{ audio }}"
+                >
                 {{ audio }}
               </a>
             {% endfor %}
@@ -27,4 +35,16 @@
       {% endfor %}
     </div>
   </div>
+
+  <script>
+  // ---- search filter
+  const searchBox = document.getElementById("searchBox");
+  searchBox.addEventListener("input", () => {
+    const q = searchBox.value.toLowerCase().trim();
+    document.querySelectorAll(".patientBtn").forEach(btn => {
+      const name = btn.dataset.filename.toLowerCase();
+      btn.style.display = name.includes(q) ? "" : "none";
+    });
+  });
+  </script>
 {% endblock %}
