@@ -2,7 +2,7 @@
 {% block title %}Análise Científica - {{ filename }}{% endblock %}
 
 {% block content %}
-<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+
 
 <div class="rounded-2xl bg-white p-6 shadow-sm">
   <div class="flex flex-wrap items-start justify-between gap-4">
@@ -176,6 +176,8 @@
   </div>
 </div>
 
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="{{ url_for('static', filename='js/audio-visualizer.js') }}"></script>
 <script>
   const group = {{ group|tojson }};
   const filename = {{ filename|tojson }};
@@ -229,38 +231,7 @@
     return [Math.log10(ymin), Math.log10(ymax)];
   }
 
-  function plotLine(divId, x, y, titleX, titleY, name, color="#2563eb", logY=false, xRange=null, yRange=null) {
-    const el = document.getElementById(divId);
-    if (el) Plotly.purge(el);
-
-    const finalYRange = logY ? toLogRange(yRange) : (yRange || undefined);
-
-    Plotly.newPlot(divId, [{
-      x, y,
-      type: "scatter",
-      mode: "lines",
-      name,
-      line: { color, width: 1.5 }
-    }], {
-      margin: { l: 55, r: 20, t: 20, b: 45 },
-      xaxis: {
-        title: titleX,
-        range: xRange || undefined
-      },
-      yaxis: {
-        title: titleY,
-        type: logY ? "log" : "linear",
-        range: finalYRange || undefined,
-        autorange: finalYRange ? false : true
-      },
-      paper_bgcolor: "white",
-      plot_bgcolor: "white"
-    }, {
-      responsive: true,
-      displaylogo: false
-    });
-  }
-
+  
   function plotHeatmap(divId, x, y, z, titleX, titleY, xRange=null, yRange=null, zRange=null) {
     const el = document.getElementById(divId);
     if (el) Plotly.purge(el);
@@ -280,161 +251,8 @@
     }, { responsive: true, displaylogo: false });
   }
 
-  function plotHistogram(divId, x, y, titleX, titleY, color="#2563eb", xRange=null, yRange=null) {
-    const el = document.getElementById(divId);
-    if (el) Plotly.purge(el);
-    
-    Plotly.newPlot(divId, [{
-      x, y, type: "bar",
-      marker: { color }
-    }], {
-      margin: { l: 55, r: 20, t: 20, b: 45 },
-      xaxis: { title: titleX, range: xRange || undefined },
-      yaxis: { title: titleY, range: yRange || undefined },
-      paper_bgcolor: "white",
-      plot_bgcolor: "white"
-    }, { responsive: true, displaylogo: false });
-  }
 
-  function plotButter(divId, data) {
-    const el = document.getElementById(divId);
-    if (el) Plotly.purge(el);
-    
-    Plotly.newPlot(divId, [
-      {
-        x: data.x,
-        y: data.gain_db,
-        type: "scatter",
-        mode: "lines",
-        name: "Ganho do filtro",
-        line: { color: "#1d4ed8", width: 2 }
-      },
-      {
-        x: [data.cutoff_hz, data.cutoff_hz],
-        y: [-80, 10],
-        type: "scatter",
-        mode: "lines",
-        name: "Frequência de corte",
-        line: { color: "#dc2626", dash: "dash", width: 2 }
-      }
-    ], {
-      margin: { l: 60, r: 20, t: 20, b: 45 },
-      xaxis: {
-        title: "Frequência (Hz)",
-        range: [0, 1000]
-      },
-      yaxis: {
-        title: "Ganho (dB)",
-        range: [-80, 10]
-      },
-      paper_bgcolor: "white",
-      plot_bgcolor: "white",
-      shapes: [
-        {
-          type: "rect",
-          x0: 0,
-          x1: data.cutoff_hz,
-          y0: -80,
-          y1: 10,
-          fillcolor: "rgba(239,68,68,0.12)",
-          line: { width: 0 }
-        }
-      ],
-      annotations: [
-        {
-          x: data.cutoff_hz / 2,
-          y: -8,
-          text: "Região fortemente atenuada",
-          showarrow: false,
-          font: { color: "#b91c1c", size: 13 }
-        },
-        {
-          x: data.cutoff_hz,
-          y: 6,
-          text: `${data.cutoff_hz} Hz`,
-          showarrow: true,
-          arrowhead: 2,
-          ax: 40,
-          ay: -30,
-          font: { color: "#dc2626", size: 14 }
-        }
-      ],
-      legend: {
-        orientation: "h"
-      }
-    }, { responsive: true, displaylogo: false });
-  }
-
-  function plotFilterEffect(divId, rawPsd, procPsd, cutoffHz=80) {
-    const el = document.getElementById(divId);
-    if (el) Plotly.purge(el);
-    
-    const ymax = Math.max(...rawPsd.y, ...procPsd.y);
-
-    Plotly.newPlot(divId, [
-      {
-        x: rawPsd.x,
-        y: rawPsd.y,
-        type: "scatter",
-        mode: "lines",
-        name: "RAW",
-        line: { color: "#2563eb", width: 2 }
-      },
-      {
-        x: procPsd.x,
-        y: procPsd.y,
-        type: "scatter",
-        mode: "lines",
-        name: "PROCESSED",
-        line: { color: "#16a34a", width: 2 }
-      },
-      {
-        x: [cutoffHz, cutoffHz],
-        y: [1e-12, ymax],
-        type: "scatter",
-        mode: "lines",
-        name: "Corte 80 Hz",
-        line: { color: "#dc2626", dash: "dash", width: 2 }
-      }
-    ], {
-      margin: { l: 60, r: 20, t: 20, b: 45 },
-      xaxis: {
-        title: "Frequência (Hz)",
-        range: [0, 500]
-      },
-      yaxis: {
-        title: "PSD",
-        type: "log"
-      },
-      paper_bgcolor: "white",
-      plot_bgcolor: "white",
-      shapes: [
-        {
-          type: "rect",
-          x0: 0,
-          x1: cutoffHz,
-          y0: 0,
-          y1: 1,
-          xref: "x",
-          yref: "paper",
-          fillcolor: "rgba(239,68,68,0.10)",
-          line: { width: 0 }
-        }
-      ],
-      annotations: [
-        {
-          x: cutoffHz / 2,
-          y: 0.92,
-          xref: "x",
-          yref: "paper",
-          text: "Faixa reduzida pelo filtro",
-          showarrow: false,
-          font: { color: "#b91c1c", size: 13 }
-        }
-      ]
-    }, { responsive: true, displaylogo: false });
-  }
-
+  
   async function loadPage() {
     const loading = document.getElementById("loading");
     const errorBox = document.getElementById("errorBox");
@@ -443,10 +261,12 @@
     try {
       const res = await fetch(`/scientific-analysis/data/${encodeURIComponent(group)}/${encodeURIComponent(filename)}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
       const data = await res.json();
+
+      // Captura as escalas unificadas calculadas pelo AnalysisService
       const ranges = data.ranges || {};
 
+      // 1.Players e Metadados
       document.getElementById("rawPlayer").src = data.raw.play_url;
       document.getElementById("procPlayer").src = data.processed.play_url;
 
@@ -478,99 +298,47 @@
         `;
       }
 
-      // Gráficos na mesma escala
-      plotLine(
-        "waveRaw",
-        data.raw.waveform.x, data.raw.waveform.y,
-        "Tempo (s)", "Amplitude", "RAW", "#2563eb", false,
-        ranges.waveform?.x, ranges.waveform?.y
-      );
+      // 2. Renderização de Gráficos (Escalas Sincronizadas)
+      const AV = AudioVisualizer;
 
-      plotLine(
-        "waveProc",
-        data.processed.waveform.x, data.processed.waveform.y,
-        "Tempo (s)", "Amplitude", "PROCESSED", "#16a34a", false,
-        ranges.waveform?.x, ranges.waveform?.y
-      );
+      AV.plotLine("waveRaw", data.raw.waveform, "Tempo (s)", "Amplitude", 
+        { color: "#2563eb", xRange: ranges.waveform?.x, yRange: ranges.waveform?.y });
+      AV.plotLine("waveProc", data.processed.waveform, "Tempo (s)", "Amplitude", 
+        { color: "#16a34a", xRange: ranges.waveform?.x, yRange: ranges.waveform?.y });
+      
+      AV.plotLine("fftRaw", data.raw.spectrum, "Frequência (Hz)", "Magnitude", 
+        { color: "#2563eb", xRange: ranges.spectrum?.x, yRange: ranges.spectrum?.y });
+      AV.plotLine("fftProc", data.processed.spectrum, "Frequência (Hz)", "Magnitude", 
+        { color: "#16a34a", xRange: ranges.spectrum?.x, yRange: ranges.spectrum?.y });
 
-      plotLine(
-        "fftRaw",
-        data.raw.spectrum.x, data.raw.spectrum.y,
-        "Frequência (Hz)", "Magnitude", "RAW", "#2563eb", false,
-        ranges.spectrum?.x, ranges.spectrum?.y
-      );
+      AV.plotHeatmap("specgramRaw", data.raw.spectrogram, "Tempo (s)", "Frequência (Hz)",
+        { xRange: ranges.spectrogram?.x, yRange: ranges.spectrogram?.y, zRange: ranges.spectrogram?.z });
+      AV.plotHeatmap("specgramProc", data.processed.spectrogram, "Tempo (s)", "Frequência (Hz)",
+        { xRange: ranges.spectrogram?.x, yRange: ranges.spectrogram?.y, zRange: ranges.spectrogram?.z });
 
-      plotLine(
-        "fftProc",
-        data.processed.spectrum.x, data.processed.spectrum.y,
-        "Frequência (Hz)", "Magnitude", "PROCESSED", "#16a34a", false,
-        ranges.spectrum?.x, ranges.spectrum?.y
-      );
+      AV.plotLine("psdRaw", data.raw.psd_f0, "Frequência (Hz)", "PSD",
+        { color: "#2563eb", xRange: ranges.psd_f0?.x, yRange: ranges.psd_f0?.y });
+      AV.plotLine("psdProc", data.processed.psd_f0, "Frequência (Hz)", "PSD",
+        { color: "#16a34a", xRange: ranges.psd_f0?.x, yRange: ranges.psd_f0?.y });
 
-      plotHeatmap(
-        "specgramRaw",
-        data.raw.spectrogram.x, data.raw.spectrogram.y, data.raw.spectrogram.z,
-        "Tempo (s)", "Frequência (Hz)",
-        ranges.spectrogram?.x, ranges.spectrogram?.y, ranges.spectrogram?.z
-      );
-
-      plotHeatmap(
-        "specgramProc",
-        data.processed.spectrogram.x, data.processed.spectrogram.y, data.processed.spectrogram.z,
-        "Tempo (s)", "Frequência (Hz)",
-        ranges.spectrogram?.x, ranges.spectrogram?.y, ranges.spectrogram?.z
-      );
-
-      plotLine(
-        "psdRaw",
-        data.raw.psd_f0.x, data.raw.psd_f0.y,
-        "Frequência (Hz)", "PSD", "RAW", "#2563eb", true,
-        ranges.psd_f0?.x, ranges.psd_f0?.y
-      );
-
-      plotLine(
-        "psdProc",
-        data.processed.psd_f0.x, data.processed.psd_f0.y,
-        "Frequência (Hz)", "PSD", "PROCESSED", "#16a34a", true,
-        ranges.psd_f0?.x, ranges.psd_f0?.y
-      );
-
-      plotFilterEffect(
+      AV.plotFilterEffect(
         "filterEffectChart",
         data.raw.psd_f0,
         data.processed.psd_f0,
         data.filter_response.cutoff_hz
       );
 
-      plotLine(
-        "autoRaw",
-        data.raw.autocorr.x, data.raw.autocorr.y,
-        "Lag (s)", "Autocorrelação", "RAW", "#2563eb", false,
-        ranges.autocorr?.x, ranges.autocorr?.y
-      );
+      AV.plotLine("autoRaw", data.raw.autocorr, "Lag (s)", "Autocorrelação", 
+        { color: "#2563eb",xRange: ranges.autocorr?.x, yRanges: ranges.autocorr?.y })
+      AV.plotLine("autoProc", data.processed.autocorr, "Lag (s)", "Autocorrelação",
+        { color: "#16a34a", xRange: ranges.autocorr?.x, yRange: ranges.autocorr?.y })
 
-      plotLine(
-        "autoProc",
-        data.processed.autocorr.x, data.processed.autocorr.y,
-        "Lag (s)", "Autocorrelação", "PROCESSED", "#16a34a", false,
-        ranges.autocorr?.x, ranges.autocorr?.y
-      );
-
-      plotHistogram(
-        "histRaw",
-        data.raw.hist.x, data.raw.hist.y,
-        "Amplitude", "Contagem", "#2563eb",
-        ranges.hist?.x, ranges.hist?.y
-      );
-
-      plotHistogram(
-        "histProc",
-        data.processed.hist.x, data.processed.hist.y,
-        "Amplitude", "Contagem", "#16a34a",
-        ranges.hist?.x, ranges.hist?.y
-      );
-
-      plotButter("butterChart", data.filter_response);
+      AV.plotHistogram("histRaw", data.raw.hist, "Amplitude", "Contagem",
+        { color: "#2563eb", xRange: ranges.hist?.x, yRange: ranges.hist?.y})
+      AV.plotHistogram("histProc", data.processed.hist, "Amplitude", "Contagem", 
+        { color: "#16a34a", xRange: ranges.hist?.x, yRange: ranges.hist?.y})
+      
+      AV.plotButterResponse("butterChart", data.filter_response);
 
       // Features paired
       const pairedT = document.getElementById("featuresPairedTable");
