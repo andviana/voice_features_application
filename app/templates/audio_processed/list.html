@@ -175,6 +175,9 @@
   <script src="{{ url_for('static', filename='js/audio-visualizer.js') }}"></script>
   
   <script>
+    // Helpers de Formatação baseados na Análise Científica
+    const formatValue = v => (v === null || v === undefined) ? "NaN" : v;
+
     const pInfoModal = document.getElementById("pInfoModal");
     const pInfoSubtitle = document.getElementById("pInfoSubtitle");
     const pInfoLoading = document.getElementById("pInfoLoading");
@@ -185,51 +188,58 @@
     const propsGrid = document.getElementById("propsGrid");
 
     function closePInfo() {
-        try { pInfoPlayer.pause(); } catch {}
-        Plotly.purge("waveChart");
-        Plotly.purge("specChart");
-        pInfoModal.classList.add("hidden");
+      try { document.getElementById("pInfoPlayer").pause(); } catch {}
+      AudioVisualizer.purge("waveChart");
+      AudioVisualizer.purge("specChart");
+      document.getElementById("pInfoModal").classList.add("hidden");
     }
-    
-    function renderKvGrid(el, obj) {
+
+    function renderKvGrid(elId, obj) {
+      const el = document.getElementById(elId);
       el.innerHTML = "";
       const entries = Object.entries(obj || {});
       if (!entries.length) { el.innerHTML = '<div class="text-sm text-slate-600">Sem dados.</div>'; return; }
-      for (const [k,v] of entries) {
-        const card = document.createElement("div");
-        card.className = "rounded-xl border bg-slate-50 p-3";
-        card.innerHTML = `<div class="text-[11px] font-medium text-slate-600">${k}</div><div class="mt-1 font-mono text-xs text-slate-900 break-all">${v}</div>`;
-        el.appendChild(card);
-      }
+      el.innerHTML = entries.map(([k,v]) => `
+        <div class="rounded-xl border bg-slate-50 p-3">
+          <div class="text-[11px] font-medium text-slate-600">${k}</div>
+          <div class="mt-1 font-mono text-xs text-slate-900 break-all">${formatValue(v)}</div>
+        </div>
+      `).join("");
     }
-
+    
     async function openProcessedInfo(btn) {
       const { group, filename } = btn.dataset;
-      pInfoSubtitle.textContent = `${group}/${filename}`;
-      pInfoLoading.classList.remove("hidden");
-      pInfoContent.classList.add("hidden");
+      const subtitle = document.getElementById("pInfoSubtitle");
+      const loading = document.getElementById("pInfoLoading");
+      const content = document.getElementById("pInfoContent");
+      const player = document.getElementById("pInfoPlayer");
+      const playerSrc = document.getElementById("pInfoPlayerSrc");
 
-      pInfoPlayerSrc.src = `/audio-processed/play/${encodeURIComponent(group)}/${encodeURIComponent(filename)}`;
-      pInfoPlayer.load();
-      pInfoModal.classList.remove("hidden");
+      subtitle.textContent = `${group}/${filename}`;
+      loading.classList.remove("hidden");
+      content.classList.add("hidden");
+
+      playerSrc.src = `/audio-processed/play/${encodeURIComponent(group)}/${encodeURIComponent(filename)}`;
+      player.load();
+      document.getElementById("pInfoModal").classList.remove("hidden");
 
       try {
         const res = await fetch(`/audio-processed/info/${encodeURIComponent(group)}/${encodeURIComponent(filename)}`);
         const data = await res.json();
 
-        pInfoLoading.classList.add("hidden");
-        pInfoContent.classList.remove("hidden");
+        loading.classList.add("hidden");
+        content.classList.remove("hidden");
 
-        renderKvGrid(propsGrid, data.props);
-        renderKvGrid(demoGrid, data.demographics?.highlight);
+        renderKvGrid("propsGrid", data.props);
+        renderKvGrid("demoGrid", data.demographics?.highlight);
 
-        // Chamadas unificadas ao AudioVisualizer (DRY)
+        // Renderização de Gráficos usando o Visualizador Unificado (DRY)
         if (data.plots) {
-            AudioVisualizer.plotLine("waveChart", data.plots.waveform, "Tempo (s)", "Amplitude", { color: "#2563eb" });
-            AudioVisualizer.plotLine("specChart", data.plots.spectrum, "Frequência (Hz)", "Magnitude", { color: "#16a34a" });
+            AudioVisualizer.plotLine("waveChart", data.plots.waveform, "Tempo (s)", "Amplitude", { color: "#2563eb", height: 250 });
+            AudioVisualizer.plotLine("specChart", data.plots.spectrum, "Frequência (Hz)", "Magnitude", { color: "#16a34a", height: 250 });
         }
       } catch (e) {
-        pInfoLoading.textContent = "Erro ao carregar informações.";
+        loading.textContent = "Erro ao carregar informações.";
         console.error(e);
       }
     }
