@@ -1,51 +1,70 @@
 import pandas as pd
-
 from pathlib import Path
 from flask import current_app
+
+from app.utils.path_utils import PathUtils
 from app.utils.manifest_utils import ManifestUtils
+
 
 class MetadataService:
     
     @staticmethod
-    def data_root() -> Path:
-        return Path(current_app.config["DATA_DIR"]).resolve()
+    def load_manifest_row(filename: str)-> dict:
+        """
+        Localiza e higieniza os dados de um paciente no manifest.csv.
+        Centraliza a lógica de busca por nome de ficheiro ou ID de gravação.
+        """
+        manifest_path = PathUtils.manifest_filepath().resolve()        
 
-    @staticmethod
-    def load_manifest_row(filename: str):
-        manifest = (MetadataService.data_root() / "metadata" / "manifest.csv").resolve()
-        if not manifest.exists():
+        if not manifest_path.exists():
             return {"highlight": {}, "all": {}}
 
-        df = pd.read_csv(manifest)
+        try:
+            df = pd.read_csv(manifest_path)
+        
+        except Exception:
+            return {"highlight": {}, "all": {}}
 
+        # Identifica a coluna que contém o nome do ficheiro ou ID
         file_col = None
+        possible_cols = ("file_name", "filename", "arquivo", "nome_arquivo", "wav", "audio", "recording_id")
+
         for c in df.columns:
             cl = str(c).strip().lower()
-            if cl in ("file_name", "filename", "arquivo", "nome_arquivo", "wav", "audio", "recording_id"):
+            if cl in possible_cols:
                 file_col = c
                 break
 
         if file_col is None:
             return {"highlight": {}, "all": {}}
 
-        key1 = filename
-        key2 = filename.replace(".wav", "")
-        s = df[file_col].astype(str).str.strip()
-        row = df.loc[(s == key1) | (s == key2)]
+        
+        # Busca flexível: aceita com ou sem a extensão .wav
+        search_key = str(filename).strip()
+        search_key_no_ext = search_key.replace(".wav", "")
+        
+        series = df[file_col].astype(str).str.strip()
+        row = df.loc[(series == search_key) | (series == search_key_no_ext)]
+
         if row.empty:
             return {"highlight": {}, "all": {}}
 
-        d = {k: ManifestUtils.sanitize(v) for k, v in row.iloc[0].to_dict().items()}
+        # Higieniza todos os valores da linha usando o ManifestUtils
+        full_data = {k: ManifestUtils.sanitize(v) for k, v in row.iloc[0].to_dict().items()}
 
+        # Extrai destaques (campos comuns em análises clínicas)
         highlight = {}
-        for out_key, candidates in {
-            "label": ["label", "grupo", "group", "class"],
+        mapping = {
+            "label": ["label", "grupo", "group", "class", "diagnostico"],
             "age": ["age", "idade"],
-            "sex": ["sex", "sexo", "gender"],
-        }.items():
+            "sex": ["sex", "sexo", "gender", "genero"],
+        }
+        
+        for key, candidates in mapping.items():
             for c in candidates:
-                if c in d:
-                    highlight[out_key] = d[c]
+                if c in full_data:
+                    highlight[key] = full_data[c]
                     break
 
-        return {"highlight": highlight, "all": d}    
+        return {"highlight": highlight, "all": full_data}
+    

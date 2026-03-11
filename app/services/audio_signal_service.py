@@ -1,12 +1,21 @@
 import librosa
 import numpy as np
 
+from pathlib import Path
 from scipy.signal import butter, freqz, welch, correlate
 
 
 class AudioSignalsService:
+
+    @staticmethod
+    def load_audio(path: str | Path):
+        """Centraliza o carregamento de áudio com librosa."""
+        y, sr = librosa.load(str(path), sr=None, mono=True)
+        return y.astype(float), int(sr)
+
     @staticmethod
     def downsample_xy(x: np.ndarray, y: np.ndarray, max_points: int = 3000):
+        """Reduz a densidade de pontos para otimizar a renderização no front-end."""
         if len(x) <= max_points:
             return x, y
         idx = np.linspace(0, len(x) - 1, num=max_points).astype(int)
@@ -14,24 +23,27 @@ class AudioSignalsService:
 
 
     @staticmethod
-    def waveform(y: np.ndarray, sr: int):
+    def waveform(y: np.ndarray, sr: int, max_points: int = 3000):
+        """Gera os dados da forma de onda."""
         t = np.arange(len(y)) / float(sr)
-        t_ds, y_ds = AudioSignalsService.downsample_xy(t, y, max_points=3000)
+        t_ds, y_ds = AudioSignalsService.downsample_xy(t, y, max_points)
         return {"x": t_ds.tolist(), "y": y_ds.tolist()}
 
 
     @staticmethod
-    def spectrum(y: np.ndarray, sr: int):
+    def spectrum(y: np.ndarray, sr: int, max_points: int = 3000):
+        """Calcula o espectro de magnitude via FFT."""
         n = int(2 ** np.ceil(np.log2(len(y)))) if len(y) > 1 else 1
         Y = np.fft.rfft(y, n=n)
         mag = np.abs(Y)
         freqs = np.fft.rfftfreq(n, d=1.0 / float(sr))
-        freqs_ds, mag_ds = AudioSignalsService.downsample_xy(freqs, mag, max_points=3000)
+        freqs_ds, mag_ds = AudioSignalsService.downsample_xy(freqs, mag, max_points)
         return {"x": freqs_ds.tolist(), "y": mag_ds.tolist()}
 
 
     @staticmethod
     def spectrogram(y: np.ndarray, sr: int, max_time_bins: int = 220, max_freq_bins: int = 180):
+        """Gera o espetrograma em dB."""
         n_fft = 1024
         hop_length = 256
 
@@ -41,6 +53,7 @@ class AudioSignalsService:
         freqs = librosa.fft_frequencies(sr=sr, n_fft=n_fft)
         times = librosa.frames_to_time(np.arange(S_db.shape[1]), sr=sr, hop_length=hop_length, n_fft=n_fft)
 
+        # Redimensionamento para performance
         if S_db.shape[1] > max_time_bins:
             tidx = np.linspace(0, S_db.shape[1] - 1, num=max_time_bins).astype(int)
             S_db = S_db[:, tidx]
@@ -58,6 +71,7 @@ class AudioSignalsService:
         }
     
 
+    # Métodos adicionais de análise avançada
     @staticmethod
     def psd(y: np.ndarray, sr: int):
         f, pxx = welch(y, fs=sr, nperseg=min(2048, len(y)))

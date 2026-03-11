@@ -1,100 +1,22 @@
 from __future__ import annotations
 
 import os
-import soundfile as sf
 from dataclasses import asdict
-from datetime import datetime
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
-import librosa
+import numpy as np
 
-from flask import render_template, abort, jsonify, send_file
+from flask import render_template, jsonify, send_file
 from app. utils.path_utils import PathUtils
-from app.utils.audio_props import AudioProps
-
+from app.utils.audio_props import read_wav_props
 from app.services.metadata_service import MetadataService
 from app.services.audio_signal_service import AudioSignalsService
 from app.services.analysis_service import AnalysisService
 from . import bp
 
-ALLOWED_GROUPS = {"HC_AH", "PD_AH"}
 
-def _safe_group_dir(base: Path, group: str) -> Path:
-    if group not in ALLOWED_GROUPS:
-        abort(404)
-    d = (base / group).resolve()
-    if base not in d.parents and d != base:
-        abort(400)
-    return d
-
-def _safe_wav_path(base: Path, group: str, filename: str) -> Path:
-    gdir = _safe_group_dir(base, group)
-    safe_name = os.path.basename(filename)
-    fpath = (gdir / safe_name).resolve()
-    if not fpath.exists() or fpath.suffix.lower() != ".wav":
-        abort(404)
-    return fpath
-
-def _read_wav_props(path: Path, group: str) -> AudioProps:
-    st = path.stat()
-    modified = datetime.fromtimestamp(st.st_mtime).strftime("%Y-%m-%d %H:%M:%S")
-
-    info = sf.info(str(path))
-
-    n_channels = int(info.channels)
-    sr = int(info.samplerate)
-    n_frames = int(info.frames)
-
-    duration = float(info.duration) if info.duration is not None else (
-        n_frames / float(sr) if sr else 0.0
-    )
-
-    compname = str(info.subtype) if info.subtype else ""
-    comptype = str(info.format) if info.format else ""
-
-    subtype_bits_map = {
-        "PCM_U8": 8,
-        "PCM_S8": 8,
-        "PCM_16": 16,
-        "PCM_24": 24,
-        "PCM_32": 32,
-        "FLOAT": 32,
-        "DOUBLE": 64,
-    }
-    bits = subtype_bits_map.get(compname, 0)
-    sample_width_bytes = bits // 8 if bits else 0
-
-    return AudioProps(
-        group=group,
-        rel_id=path.name,
-        filename=path.name,
-        size_bytes=st.st_size,
-        modified_at=modified,
-        n_channels=n_channels,
-        sample_rate_hz=sr,
-        n_frames=n_frames,
-        sample_width_bytes=sample_width_bytes,
-        duration_sec=duration,
-        comptype=comptype,
-        compname=compname,
-    )
-
-
-def _load_audio(path: Path):
-    y, sr = librosa.load(str(path), sr=None, mono=True)
-    return y.astype(float), int(sr)
-
-
-def _features_csv_for_group(group: str) -> Path:
-    p1 = (PathUtils.data_root() / "features" / group / "dataset_voz_completo.csv").resolve()
-    if p1.exists():
-        return p1
-    p2 = (PathUtils.data_root() / "features" / "dataset_voz_completo.csv").resolve()
-    return p2
-
-
+# Helper para evitar valores infinitos ou NaN no JSON de resposta
 def _safe_max(values, default=1.0):
     vals = [float(v) for v in values if v is not None and np.isfinite(v)]
     return max(vals) if vals else default
@@ -114,19 +36,18 @@ def _flatten_2d(z):
     return out
 
 
-
-
-
-
-
 @bp.get("/")
 def index():
+    """Lista todos os áudios disponíveis para análise científica."""
     raw_base = PathUtils.raw_root()
-    audios = {g: [] for g in sorted(ALLOWED_GROUPS)}
+    audios = {}
 
-    for group in sorted(ALLOWED_GROUPS):
-        gdir = _safe_group_dir(raw_base, group)
-        audios[group] = sorted([p.name for p in gdir.glob("*.wav")], key=lambda s: s.lower())
+    for group in sorted(PathUtils.ALLOWED_GROUPS):
+        try:
+            gdir = PathUtils.safe_group_dir(raw_base, group)
+            audios[group] = sorted([p.name for p in gdir.glob("*.wav")], key=lambda s: s.lower())
+        except Exception:
+            audios[group] = []
 
     return render_template("scientific_analysis/list.html", audios=audios)
 
@@ -138,46 +59,50 @@ def patient_page(group: str, filename: str):
 
 @bp.get("/data/<group>/<path:filename>")
 def patient_data(group: str, filename: str):
-    raw_path = _safe_wav_path(PathUtils.raw_root(), group, filename)
-    processed_path = _safe_wav_path(PathUtils.processed_root(), group, filename)
+    """
+    Agrega todos os dados para a análise comparativa (Raw vs Processed).
+    Usa serviços centralizados para garantir consistência.
+    """
+    # 1. Resolução segura de caminhos via PathUtils
+    raw_path = PathUtils.safe_wav_path(PathUtils.raw_root(), group, filename)
+    proc_path = PathUtils.safe_wav_path(PathUtils.processed_root(), group, filename)
 
-    y_raw, sr_raw = _load_audio(raw_path)
-    y_proc, sr_proc = _load_audio(processed_path)
+    # 2. Carregamento de sinal via AudioSignalsService
+    y_raw, sr_raw = AudioSignalsService.load_audio(raw_path)
+    y_proc, sr_proc = AudioSignalsService.load_audio(proc_path)
 
-    raw_props = asdict(_read_wav_props(raw_path, group))
-    proc_props = asdict(_read_wav_props(processed_path, group))
-
+    # 3. Metadados e Propriedades via serviços globais
+    raw_props = asdict(read_wav_props(raw_path, group))
+    proc_props = asdict(read_wav_props(proc_path, group))
     demographics = MetadataService.load_manifest_row(filename)
 
-    paired_features = []
-    single_features = []
-    features_csv = _features_csv_for_group(group)
+    # 4. Extração de Features (Lógica do AnalysisService)
+    paired_features, single_features = [], []
+    # Tenta localizar o CSV de features do grupo
+    features_csv = PathUtils.features_csv_for_group(group)
     if features_csv.exists():
         df = pd.read_csv(features_csv)
-        if "file_name" in df.columns:
-            hit = df.loc[df["file_name"].astype(str).str.strip() == filename]
-            if not hit.empty:
-                paired_features, single_features = AnalysisService.pair_features(hit.iloc[0])
-
+        hit = df.loc[df["file_name"].astype(str).str.strip() == filename]
+        if not hit.empty:
+            paired_features, single_features = AnalysisService.pair_features(hit.iloc[0])
+    
+    # 5. Processamento de Sinais para Gráficos
+    # Dados Brutos
     wave_raw = AudioSignalsService.waveform(y_raw, sr_raw)
-    wave_proc = AudioSignalsService.waveform(y_proc, sr_proc)
-
     spec_raw = AudioSignalsService.spectrum(y_raw, sr_raw)
-    spec_proc = AudioSignalsService.spectrum(y_proc, sr_proc)
-
     specgram_raw = AudioSignalsService.spectrogram(y_raw, sr_raw)
-    specgram_proc = AudioSignalsService.spectrogram(y_proc, sr_proc)
-
     psd_raw = AudioSignalsService.psd(y_raw, sr_raw)
-    psd_proc = AudioSignalsService.psd(y_proc, sr_proc)
-
     psd_f0_raw = AudioSignalsService.psd_zoom_f0(y_raw, sr_raw, max_hz=500.0)
-    psd_f0_proc = AudioSignalsService.psd_zoom_f0(y_proc, sr_proc, max_hz=500.0)
-
     auto_raw = AudioSignalsService.autocorr(y_raw, sr_raw)
-    auto_proc = AudioSignalsService.autocorr(y_proc, sr_proc)
-
     hist_raw = AudioSignalsService.amplitude_hist(y_raw)
+
+    # Dados processados
+    wave_proc = AudioSignalsService.waveform(y_proc, sr_proc)
+    spec_proc = AudioSignalsService.spectrum(y_proc, sr_proc)
+    specgram_proc = AudioSignalsService.spectrogram(y_proc, sr_proc)
+    psd_proc = AudioSignalsService.psd(y_proc, sr_proc)
+    psd_f0_proc = AudioSignalsService.psd_zoom_f0(y_proc, sr_proc, max_hz=500.0)
+    auto_proc = AudioSignalsService.autocorr(y_proc, sr_proc)
     hist_proc = AudioSignalsService.amplitude_hist(y_proc)
 
     payload = {
@@ -206,6 +131,7 @@ def patient_data(group: str, filename: str):
             "autocorr": auto_proc,
             "hist": hist_proc,
         },
+        # Mantém a resposta do filtro Butterworth para o gráfico de resposta em frequência
         "filter_response": AudioSignalsService.butter_response(sr_raw, cutoff=80.0, order=4),
         "features": {
             "paired": paired_features,
@@ -293,11 +219,11 @@ def patient_data(group: str, filename: str):
 
 @bp.get("/play/raw/<group>/<path:filename>")
 def play_raw(group: str, filename: str):
-    fpath = _safe_wav_path(PathUtils.raw_root(), group, filename)
+    fpath = PathUtils.safe_wav_path(PathUtils.raw_root(), group, filename)
     return send_file(fpath, mimetype="audio/wav", as_attachment=False)
 
 
 @bp.get("/play/processed/<group>/<path:filename>")
 def play_processed(group: str, filename: str):
-    fpath = _safe_wav_path(PathUtils.processed_root(), group, filename)
+    fpath = PathUtils.safe_wav_path(PathUtils.processed_root(), group, filename)
     return send_file(fpath, mimetype="audio/wav", as_attachment=False)

@@ -96,8 +96,8 @@
     </div>
   </div>
 
-  <!-- Chart.js (CDN) -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Plotly (CDN) -->
+  <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 
   <!-- MODAL INFO -->
   <div id="pInfoModal" class="fixed inset-0 z-50 hidden">
@@ -129,11 +129,11 @@
           <div class="grid grid-cols-1 gap-4">
             <div class="rounded-xl border p-3">
               <div class="text-sm font-semibold">Waveform (amplitude vs tempo)</div>
-              <canvas id="waveChart" class="mt-2"></canvas>
+              <div id="waveChart" class="mt-2"></div>
             </div>
             <div class="rounded-xl border p-3">
               <div class="text-sm font-semibold">Espectro (magnitude vs frequência)</div>
-              <canvas id="specChart" class="mt-2"></canvas>
+              <div id="specChart" class="mt-2"></div>
             </div>
           </div>
 
@@ -192,13 +192,14 @@
     let waveChart = null;
     let specChart = null;
 
+    // No fechamento do modal, limpe os gráficos para liberar memória
     function closePInfo() {
-      try { pInfoPlayer.pause(); } catch {}
-      if (waveChart) { waveChart.destroy(); waveChart = null; }
-      if (specChart) { specChart.destroy(); specChart = null; }
-      pInfoModal.classList.add("hidden");
+        try { pInfoPlayer.pause(); } catch {}
+        Plotly.purge("waveChart");
+        Plotly.purge("specChart");
+        pInfoModal.classList.add("hidden");
     }
-
+    
     function renderKvGrid(el, obj) {
       el.innerHTML = "";
       const entries = Object.entries(obj || {});
@@ -220,52 +221,43 @@
       }
     }
 
-    function plotWaveform(t, y) {
-      const ctx = document.getElementById("waveChart");
-      waveChart = new Chart(ctx, {
-        type: "line",
-        data: {
-          labels: t,
-          datasets: [{
-            label: "Amplitude",
-            data: y,
-            borderWidth: 1,
-            pointRadius: 0
-          }]
-        },
-        options: {
-          responsive: true,
-          animation: false,
-          scales: {
-            x: { title: { display: true, text: "Tempo (s)" } },
-            y: { title: { display: true, text: "Amplitude" } }
-          }
-        }
-      });
+    // Função genérica para plotar linhas (DRY)
+    function plotLine(divId, x, y, titleX, titleY, color="#2563eb") {
+        const el = document.getElementById(divId);
+        if (!el) return;
+        
+        Plotly.purge(el); // Limpa gráfico anterior
+
+        const trace = {
+            x: x,
+            y: y,
+            type: 'scatter',
+            mode: 'lines',
+            line: { color: color, width: 1.5 },
+            hoverinfo: 'x+y'
+        };
+
+        const layout = {
+            margin: { l: 50, r: 20, t: 20, b: 40 },
+            xaxis: { title: titleX },
+            yaxis: { title: titleY },
+            paper_bgcolor: "white",
+            plot_bgcolor: "white",
+            height: 250 // Ajuste para caber no modal
+        };
+
+        const config = { responsive: true, displaylogo: false };
+
+        Plotly.newPlot(divId, [trace], layout, config);
     }
 
-    function plotSpectrum(f, mag) {
-      const ctx = document.getElementById("specChart");
-      specChart = new Chart(ctx, {
-        type: "line",
-        data: {
-          labels: f,
-          datasets: [{
-            label: "Magnitude",
-            data: mag,
-            borderWidth: 1,
-            pointRadius: 0
-          }]
-        },
-        options: {
-          responsive: true,
-          animation: false,
-          scales: {
-            x: { title: { display: true, text: "Frequência (Hz)" } },
-            y: { title: { display: true, text: "Magnitude" } }
-          }
-        }
-      });
+    // Funções específicas chamando o helper genérico
+    function plotWaveform(x, y) {
+        plotLine("waveChart", x, y, "Tempo (s)", "Amplitude", "#2563eb");
+    }
+
+    function plotSpectrum(x, y) {
+        plotLine("specChart", x, y, "Frequência (Hz)", "Magnitude", "#16a34a");
     }
 
     async function openProcessedInfo(btn) {
@@ -295,14 +287,19 @@
         pInfoContent.classList.remove("hidden");
 
         renderKvGrid(propsGrid, data.props);
-        renderKvGrid(demoGrid, data.demographics);
+        renderKvGrid(demoGrid, data.demographics?.all);
 
-        // gráficos
+        // gráficos sincronizados com AudioSignalService
         const wf = data?.plots?.waveform;
         const sp = data?.plots?.spectrum;
-        if (wf && sp) {
-          plotWaveform(wf.t, wf.y);
-          plotSpectrum(sp.f, sp.mag);
+        
+        // O AudioSignalsService agora retorna 'x' e 'y'
+        if (wf && wf.x && wf.y) {
+          plotWaveform(wf.x, wf.y);          
+        }
+
+        if (sp && sp.x && sp.y) {
+          plotSpectrum(sp.x, sp.y)
         }
       } catch (e) {
         pInfoLoading.textContent = "Erro ao carregar informações/gráficos.";

@@ -2,179 +2,39 @@ from __future__ import annotations
 
 import os
 from dataclasses import asdict
-from pathlib import Path
-from typing import Iterable
+from flask import current_app, render_template, jsonify, send_file
 
-from flask import current_app, render_template, abort, send_file, jsonify, Response, stream_with_context
-
-from app.utils.audio_props import AudioProps, AudioProps, read_wav_props, SOUNDFILE_ERRORS
-
-import numpy as np
-import pandas as pd
-import librosa
+from app.utils.audio_props import read_wav_props
+from app.utils.path_utils import PathUtils
+from app.services.metadata_service import MetadataService
+from app.services.audio_signal_service import AudioSignalsService
 from . import bp
-
-ALLOWED_GROUPS = {"HC_AH", "PD_AH"}
-
-
-def _data_root() -> Path:
-    return Path(current_app.config["DATA_DIR"]).resolve()
-
-
-def _audio_processed_root() -> Path:
-    return (_data_root() / "audio_processed").resolve()
-
-
-def _safe_group_dir(group: str) -> Path:
-    if group not in ALLOWED_GROUPS:
-        abort(404)
-
-    base = _audio_processed_root()
-    d = (base / group).resolve()
-
-    if base not in d.parents and d != base:
-        abort(400)
-
-    return d
-
-
-def _safe_wav_path(group: str, filename: str) -> Path:
-    gdir = _safe_group_dir(group)
-    safe_name = os.path.basename(filename)
-    fpath = (gdir / safe_name).resolve()
-
-    if not fpath.exists() or fpath.suffix.lower() != ".wav":
-        abort(404)
-
-    return fpath
-
-
-def _load_manifest_row(filename: str) -> dict:
-    """
-    Retorna a linha inteira do manifest (todas as colunas) para o arquivo.
-    Não assume nomes fixos de colunas.
-    """
-    manifest = (_data_root() / "metadata" / "manifest.csv").resolve()
-    if not manifest.exists():
-        return {}
-
-    df = pd.read_csv(manifest)
-
-    # tenta identificar coluna de filename
-    file_col = None
-    for c in df.columns:
-        cl = str(c).strip().lower()
-        if cl in ("file_name", "filename", "arquivo", "nome_arquivo", "wav", "audio"):
-            file_col = c
-            break
-
-    if file_col is None:
-        return {}
-
-    # match exato por nome
-    row = df.loc[df[file_col].astype(str).str.strip() == filename]
-    if row.empty:
-        return {}
-
-    # pega a primeira ocorrência
-    return row.iloc[0].to_dict()
-
-
-def _downsample_xy(x: np.ndarray, y: np.ndarray, max_points: int = 2000):
-    if len(x) <= max_points:
-        return x, y
-    idx = np.linspace(0, len(x) - 1, num=max_points).astype(int)
-    return x[idx], y[idx]
-
-
-def _compute_waveform_and_spectrum(wav_path: Path, max_points: int = 2000):
-    """
-    Gera dados leves pra plotar:
-    - waveform: tempo(s) vs amplitude
-    - spectrum: freq(Hz) vs magnitude (FFT)
-    """
-    y, sr = librosa.load(str(wav_path), sr=None, mono=True)
-    if y.size == 0 or sr is None or sr == 0:
-        return {"waveform": None, "spectrum": None}
-
-    # Waveform
-    t = np.arange(len(y)) / float(sr)
-    t_ds, y_ds = _downsample_xy(t, y, max_points=max_points)
-
-    # Spectrum (FFT)
-    n = int(2 ** np.ceil(np.log2(len(y)))) if len(y) > 1 else 1
-    Y = np.fft.rfft(y, n=n)
-    mag = np.abs(Y)
-    freqs = np.fft.rfftfreq(n, d=1.0 / float(sr))
-
-    # reduz pontos do espectro também
-    freqs_ds, mag_ds = _downsample_xy(freqs, mag, max_points=max_points)
-
-    return {
-        "sr": int(sr),
-        "waveform": {
-            "t": np.round(t_ds, 2).tolist(),
-            "y": y_ds.tolist(),
-        },
-        "spectrum": {
-            "f": np.round(freqs_ds, 2).tolist(),
-            "mag": mag_ds.tolist(),
-        },
-    }
-
-
-def _iter_wavs(group_dir: Path) -> Iterable[Path]:
-    # ordena por nome
-    return sorted(group_dir.glob("*.wav"), key=lambda p: p.name.lower())
-
-def _get_paths_config():
-    """Centraliza as configurações de diretórios do app."""
-    return {
-        # "raw_root": Path(current_app.config["AUDIO_RAW_DIR"]).resolve(),
-        "data_root": Path(current_app.config["DATA_DIR"]).resolve(),
-    }
-
 
 
 @bp.get("/audio-processed")
 def list_audios_processed():
-    cfg = _get_paths_config()
-    base = _audio_processed_root()    
-    items: list[AudioProps] = []
+    """Lista áudios processados utilizando utilitários centralizados."""
+    base = PathUtils.processed_root()    
+    items = []
     counts = {}
 
-    for group in sorted(ALLOWED_GROUPS):
-        gdir = _safe_group_dir(group)
-        wavs = list(_iter_wavs(gdir))
-        counts[group] = len(wavs)
+    for group in sorted(PathUtils.ALLOWED_GROUPS):
+        try:
+            gdir = PathUtils.safe_group_dir(base, group)
+            wavs = sorted(gdir.glob("*.wav"), key=lambda p: p.name.lower())
+            counts[group] = len(wavs)
 
-        for w in wavs:
-            try:
-                items.append(read_wav_props(w, group))
+            for w in wavs:
+                # Usa fallback para props caso o ficheiro esteja inacessível
+                items.append(read_wav_props(w, group, error_fallback=True))
             
-            except SOUNDFILE_ERRORS:
-                st = w.stat()
-                items.append(
-                    AudioProps(
-                        group=group,
-                        filename=w.name,
-                        rel_id=f"{group}/{w.name}",
-                        size_bytes=st.st_size,
-                        modified_at="",
-                        n_channels=0,
-                        sample_rate_hz=0,
-                        n_frames=0,
-                        sample_width_bytes=0,
-                        duration_sec=0.0,
-                        comptype="invalid",
-                        compname="invalid",
-                    )
-                )
+        except Exception:
+                counts[group] = 0
     
-    # Verificar se os CSVs de features já foram gerados
-    features_dir = cfg["data_root"] / "features"
-    hc_ready = (features_dir / "HC_AH" / "dataset_voz_completo.csv").exists()
-    pd_ready = (features_dir / "PD_AH" / "dataset_voz_completo.csv").exists()
+    # Verificação de integridade dos datasets de features
+    features_dir = PathUtils.data_root() / PathUtils.FEATURES_ROOT
+    hc_ready = (features_dir / "HC_AH" / PathUtils.FEATURES_FILE).exists()
+    pd_ready = (features_dir / "PD_AH" / PathUtils.FEATURES_FILE).exists()
 
     return render_template(
         "audio_processed/list.html",
@@ -187,26 +47,40 @@ def list_audios_processed():
 
 @bp.get("/audio-processed/play/<group>/<path:filename>")
 def play_audio_processed(group: str, filename: str):
-    fpath = _safe_wav_path(group, filename)
+    """Reprodução segura de áudio processado."""
+    fpath = PathUtils.safe_wav_path(PathUtils.processed_root(), group, filename)
     return send_file(fpath, mimetype="audio/wav", as_attachment=False)
 
 
 @bp.get("/audio-processed/info/<group>/<path:filename>")
 def audio_processed_info(group: str, filename: str):
     """
-    Retorna JSON para o modal:
-    - props do wav (wave)
-    - demographics (linha do manifest)
-    - waveform e spectrum para plot
+    Retorna JSON consolidado para o modal de info:
+    - Propriedades técnicas (AudioProps)
+    - Dados demográficos (MetadataService)
+    - Gráficos (AudioSignalsService)
     """
-    fpath = _safe_wav_path(group, filename)
+    fpath = PathUtils.safe_wav_path(PathUtils.processed_root(), group, filename)    
+    
+    try:
+        # 1. Carregamento do sinal
+        y, sr = AudioSignalsService.load_audio(fpath)
 
-    props = read_wav_props(fpath, group)
-    demographics = _load_manifest_row(fpath.name)
-    plots = _compute_waveform_and_spectrum(fpath, max_points=2000)
+        # 2. Resposta
+        props = asdict(read_wav_props(fpath, group))
+        demographics = MetadataService.load_manifest_row(fpath.name)
+        waveform = AudioSignalsService.waveform(y, sr)
+        spectrum = AudioSignalsService.spectrum(y, sr)
 
-    return jsonify({
-        "props": asdict(props),
-        "demographics": demographics,
-        "plots": plots,
-    })
+        return jsonify({
+            "props": props,
+            "demographics": demographics,
+            "plots": {
+                "sr": sr,
+                "waveform":waveform,
+                "spectrum":spectrum
+            }
+        })
+    except Exception as e:
+        current_app.logger.error(f"Erro ao processar info de áudio: {str(e)}")
+        return jsonify({"error": "Falha ao processar dados do áudio"}), 500
