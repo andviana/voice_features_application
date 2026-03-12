@@ -3,25 +3,28 @@
 
 {% block content %}
   <div class="rounded-2xl bg-white p-6 shadow-sm">
-    <div class="flex flex-wrap items-end justify-between gap-3">
+    
+    <div class="flex flex-wrap items-start justify-between gap-4 mb-4">
       <div>
-        <h1 class="text-xl font-semibold">Áudios Raw</h1>
-        <p class="mt-1 text-sm text-slate-600">
-          Base: <code class="rounded bg-slate-100 px-2 py-0.5">{{ base }}</code>
-        </p>
-        
-        <button
-          class="rounded-lg border px-3 py-1 hover:bg-slate-50"
-          onclick="openPPModal('Pré-processamento em lote')">
-          Pré-processar (lote)
-        </button>
-
+        <h1 class="text-2xl font-semibold">Áudios Raw</h1>
+        <p class="mt-1 font-mono text-xs text-slate-600">{{ base }}</p>
       </div>
+      <a href="javascript:window.history.back()"
+        class="rounded-xl border px-4 py-2 text-sm hover:bg-slate-50">
+        Voltar
+      </a>
+    </div>
 
+    <div class="flex flex-wrap items-end justify-between gap-3">
       <div class="flex gap-2 text-sm">
         <span class="rounded-xl border bg-slate-50 px-3 py-1">HC_AH: <b>{{ counts["HC_AH"] }}</b></span>
         <span class="rounded-xl border bg-slate-50 px-3 py-1">PD_AH: <b>{{ counts["PD_AH"] }}</b></span>
       </div>
+      <button
+        class="rounded-xl bg-indigo-600 px-4 py-1 text-white hover:bg-indigo-700 transition-colors flex items-center gap-2"          
+        onclick="openPPModal('Pré-processamento em lote')">
+        Pré-processar
+      </button>
     </div>
 
     <div class="mt-4 overflow-hidden rounded-xl border">
@@ -54,14 +57,6 @@
                      href="{{ url_for('audio_raw.audio_info', group=a.group, filename=a.filename) }}">
                     Info
                   </a>
-                  <button
-                      class="rounded-lg border px-3 py-1 hover:bg-slate-50"
-                      data-group="{{ a.group }}"
-                      data-filename="{{ a.filename }}"
-                      onclick="openInfoModal(this)">
-                      Modal
-                    </button>
-
                   <audio controls preload="none" class="h-8 w-64">
                     <source src="{{ url_for('audio_raw.play_audio', group=a.group, filename=a.filename) }}" type="audio/wav" />
                     Seu navegador não suporta áudio.
@@ -74,39 +69,6 @@
       </table>
     </div>
   </div>
-
-
-  <!-- MODAL -->
-  <div id="infoModal" class="fixed inset-0 z-50 hidden">
-    <div class="absolute inset-0 bg-black/40" onclick="closeInfoModal()"></div>
-
-    <div class="relative mx-auto mt-16 w-[min(900px,92vw)] rounded-2xl bg-white shadow-xl">
-      <div class="flex items-center justify-between border-b p-4">
-        <div>
-          <h2 class="text-lg font-semibold">Info do áudio</h2>
-          <p id="modalSubtitle" class="mt-0.5 text-xs text-slate-600 font-mono"></p>
-        </div>
-        <button class="rounded-lg border px-3 py-1 text-sm hover:bg-slate-50" onclick="closeInfoModal()">
-          Fechar
-        </button>
-      </div>
-
-      <div class="p-4">
-        <div class="rounded-xl border bg-slate-950 p-3">
-          <audio id="modalPlayer" controls class="w-full">
-            <source id="modalPlayerSrc" src="" type="audio/wav" />
-          </audio>
-        </div>
-
-        <div id="modalLoading" class="mt-4 text-sm text-slate-600">Carregando...</div>
-
-        <div id="modalGrid" class="mt-4 hidden grid grid-cols-1 gap-3 md:grid-cols-2">
-          <!-- preenchido via JS -->
-        </div>
-      </div>
-    </div>
-  </div>
-
 
 
 <!-- modal para mostrar logs em tempo real -->
@@ -244,76 +206,6 @@
 </script>
 
 
-<!-- script para o preenchimento de dados do modal de info -->
-  <script>
-    const modal = document.getElementById("infoModal");
-    const modalGrid = document.getElementById("modalGrid");
-    const modalLoading = document.getElementById("modalLoading");
-    const modalSubtitle = document.getElementById("modalSubtitle");
 
-    const modalPlayer = document.getElementById("modalPlayer");
-    const modalPlayerSrc = document.getElementById("modalPlayerSrc");
-
-    function openInfoModal(btn) {
-      const group = btn.dataset.group;
-      const filename = btn.dataset.filename;
-
-      modal.classList.remove("hidden");
-      modalLoading.classList.remove("hidden");
-      modalGrid.classList.add("hidden");
-      modalGrid.innerHTML = "";
-      modalSubtitle.textContent = `${group}/${filename}`;
-
-      // seta player
-      const playUrl = `/audio-raw/play/${encodeURIComponent(group)}/${encodeURIComponent(filename)}`;
-      modalPlayerSrc.src = playUrl;
-      modalPlayer.load();
-
-      // busca JSON com props
-      const infoUrl = `/audio-raw/info-json/${encodeURIComponent(group)}/${encodeURIComponent(filename)}`;
-      fetch(infoUrl)
-        .then(r => {
-          if (!r.ok) throw new Error("Falha ao carregar info");
-          return r.json();
-        })
-        .then(data => {
-          modalLoading.classList.add("hidden");
-          modalGrid.classList.remove("hidden");
-
-          // Render cards
-          for (const [k, v] of Object.entries(data)) {
-            const card = document.createElement("div");
-            card.className = "rounded-xl border bg-slate-50 p-3";
-
-            const kk = document.createElement("div");
-            kk.className = "text-xs font-medium text-slate-600";
-            kk.textContent = k;
-
-            const vv = document.createElement("div");
-            vv.className = "mt-1 font-mono text-xs text-slate-900 break-all";
-            vv.textContent = String(v);
-
-            card.appendChild(kk);
-            card.appendChild(vv);
-            modalGrid.appendChild(card);
-          }
-        })
-        .catch(err => {
-          modalLoading.textContent = "Erro ao carregar informações do áudio.";
-          console.error(err);
-        });
-    }
-
-    function closeInfoModal() {
-      // pausa áudio
-      try { modalPlayer.pause(); } catch {}
-      modal.classList.add("hidden");
-    }
-
-    // ESC fecha
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && !modal.classList.contains("hidden")) closeInfoModal();
-    });
-  </script>
 
 {% endblock %}
