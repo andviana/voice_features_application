@@ -54,7 +54,13 @@ def audio_info(group: str, filename: str):
     """Página HTML de detalhes do áudio bruto."""
     fpath = PathUtils.safe_wav_path(PathUtils.raw_root(), group, filename)
     props = read_wav_props(fpath, group)
-    return render_template("audio_raw/info.html", props=props, props_dict=asdict(props))
+    return render_template(
+        "audio_raw/info.html", 
+        props=props, 
+        props_dict=asdict(props),
+        group=group,        # Adicione esta linha
+        filename=filename   # Adicione esta linha
+    )
 
 
 @bp.post("/audio-raw/preprocess/<group>/<path:filename>")

@@ -3,39 +3,45 @@
 
 {% block content %}
   <div class="rounded-2xl bg-white p-6 shadow-sm">
-    <div class="flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h1 class="text-xl font-semibold">Áudios Processados</h1>
-        <p class="mt-1 text-sm text-slate-600">
-          Base: <code class="rounded bg-slate-100 px-2 py-0.5">{{ base }}</code>
-        </p>
+    <div class="flex flex-wrap items-start justify-between gap-4 mb-4">
+        <div>
+          <h1 class="text-2xl font-semibold">Áudios Processados</h1>
+          <p class="mt-1 font-mono text-xs text-slate-600">{{ base }}</p>
+        </div>
+        <a href="javascript:window.history.back()"
+          class="rounded-xl border px-4 py-2 text-sm hover:bg-slate-50">
+          Voltar
+        </a>
       </div>
-
+      
+    <div class="flex flex-wrap items-end justify-between gap-3">
       <div class="flex gap-2 text-sm">
         <span class="rounded-xl border bg-slate-50 px-3 py-1">HC_AH: <b>{{ counts["HC_AH"] }}</b></span>
         <span class="rounded-xl border bg-slate-50 px-3 py-1">PD_AH: <b>{{ counts["PD_AH"] }}</b></span>
       </div>
 
       <div class="flex flex-wrap gap-2 text-sm items-center justify-end">
-        <button
-          class="rounded-xl border bg-white px-3 py-1 hover:bg-slate-50 font-medium text-indigo-600"
-          onclick="startExtractFeatures(null)">
-          Extrair features (Todos os Grupos)
-        </button>
-
         {% if features_ready %}
           <a href="{{ url_for('features.list_features') }}"
-            class="rounded-xl bg-indigo-600 px-4 py-1 text-white hover:bg-indigo-700 transition-colors flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-            </svg>
+            class="rounded-xl border bg-white px-3 py-1 hover:bg-slate-50 font-medium text-indigo-600">
+            
             Ver Datasets Extraídos
           </a>
           {% else %}
           <span class="rounded-xl border bg-slate-50 px-3 py-1 text-slate-400 cursor-not-allowed" title="Extraia as features primeiro">
             Datasets não disponíveis
           </span>
-          {% endif %}
+        {% endif %}
+
+        <button
+          class="rounded-xl bg-indigo-600 px-4 py-1 text-white hover:bg-indigo-700 transition-colors flex items-center gap-2"          
+          onclick="startExtractFeatures(null)">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          Extrair features
+        </button>        
+        
       </div>
 
     </div>
@@ -66,15 +72,12 @@
               <td class="text-xs text-slate-600">{{ a.modified_at }}</td>
               <td class="text-right">
                 <div class="flex flex-col items-end gap-2">
-                  <div class="flex flex-wrap justify-end gap-2">
+                  <div class="flex flex-wrap justify-end gap-2">               
                     <button
                       class="rounded-lg border px-3 py-1 hover:bg-slate-50"
-                      data-group="{{ a.group }}"
-                      data-filename="{{ a.filename }}"
-                      onclick="openProcessedInfo(this)">
+                      onclick="window.location.href='{{ url_for('scientific_analysis.patient_page', group=a.group, filename=a.filename) }}'">
                       Info
                     </button>
-
                     <button
                       class="rounded-lg border px-3 py-1 hover:bg-slate-50"
                       data-group="{{ a.group }}"
@@ -97,60 +100,6 @@
   </div>
 
   
-  <!-- MODAL INFO -->
-  <div id="pInfoModal" class="fixed inset-0 z-50 hidden">
-    <div class="absolute inset-0 bg-black/40" onclick="closePInfo()"></div>
-    <div class="relative mx-auto mt-10 w-[min(1100px,94vw)] max-h-[90vh] flex flex-col rounded-2xl bg-white shadow-xl">
-      
-      <div class="flex items-start justify-between border-b p-4 flex-shrink-0">
-        <div>
-          <h2 class="text-lg font-semibold">Info do áudio processado</h2>
-          <p id="pInfoSubtitle" class="mt-0.5 text-xs text-slate-600 font-mono"></p>
-        </div>
-        <button class="rounded-lg border px-3 py-1 text-sm hover:bg-slate-50" onclick="closePInfo()">
-          Fechar
-        </button>
-      </div>
-
-      <div class="p-4 space-y-4 overflow-y-auto">
-        <div class="rounded-xl border bg-slate-950 p-3">
-          <audio id="pInfoPlayer" controls class="w-full">
-            <source id="pInfoPlayerSrc" src="" type="audio/wav" />
-          </audio>
-        </div>
-
-        <div id="pInfoLoading" class="text-sm text-slate-600">Carregando...</div>
-
-        <div id="pInfoContent" class="hidden space-y-6">
-
-          <!-- Gráficos -->
-          <div class="grid grid-cols-1 gap-4">
-            <div class="rounded-xl border p-3">
-              <div class="text-sm font-semibold">Waveform (amplitude vs tempo)</div>
-              <div id="waveChart" class="mt-2"></div>
-            </div>
-            <div class="rounded-xl border p-3">
-              <div class="text-sm font-semibold">Espectro (magnitude vs frequência)</div>
-              <div id="specChart" class="mt-2"></div>
-            </div>
-          </div>
-
-          <!-- Demografia -->
-          <div>
-            <div class="text-sm font-semibold">Demografia (manifest.csv)</div>
-            <div id="demoGrid" class="mt-2 grid grid-cols-1 gap-3 md:grid-cols-3"></div>
-          </div>
-
-          <!-- Propriedades WAV -->
-          <div>
-            <div class="text-sm font-semibold">Propriedades do arquivo</div>
-            <div id="propsGrid" class="mt-2 grid grid-cols-1 gap-3 md:grid-cols-2"></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- MODAL LOGS (SSE) - FEATURES -->
   <div id="fxModal" class="fixed inset-0 z-50 hidden">
     <div class="absolute inset-0 bg-black/40" onclick="closeFxModal()"></div>
@@ -172,83 +121,8 @@
     </div>
   </div>
 
-  <script src="{{ url_for('static', filename='js/audio-visualizer.js') }}"></script>
-  
-  <script>
-    // Helpers de Formatação baseados na Análise Científica
-    const formatValue = v => (v === null || v === undefined) ? "NaN" : v;
-
-    const pInfoModal = document.getElementById("pInfoModal");
-    const pInfoSubtitle = document.getElementById("pInfoSubtitle");
-    const pInfoLoading = document.getElementById("pInfoLoading");
-    const pInfoContent = document.getElementById("pInfoContent");
-    const pInfoPlayer = document.getElementById("pInfoPlayer");
-    const pInfoPlayerSrc = document.getElementById("pInfoPlayerSrc");
-    const demoGrid = document.getElementById("demoGrid");
-    const propsGrid = document.getElementById("propsGrid");
-
-    function closePInfo() {
-      try { document.getElementById("pInfoPlayer").pause(); } catch {}
-      AudioVisualizer.purge("waveChart");
-      AudioVisualizer.purge("specChart");
-      document.getElementById("pInfoModal").classList.add("hidden");
-    }
-
-    function renderKvGrid(elId, obj) {
-      const el = document.getElementById(elId);
-      el.innerHTML = "";
-      const entries = Object.entries(obj || {});
-      if (!entries.length) { el.innerHTML = '<div class="text-sm text-slate-600">Sem dados.</div>'; return; }
-      el.innerHTML = entries.map(([k,v]) => `
-        <div class="rounded-xl border bg-slate-50 p-3">
-          <div class="text-[11px] font-medium text-slate-600">${k}</div>
-          <div class="mt-1 font-mono text-xs text-slate-900 break-all">${formatValue(v)}</div>
-        </div>
-      `).join("");
-    }
     
-    async function openProcessedInfo(btn) {
-      const { group, filename } = btn.dataset;
-      const subtitle = document.getElementById("pInfoSubtitle");
-      const loading = document.getElementById("pInfoLoading");
-      const content = document.getElementById("pInfoContent");
-      const player = document.getElementById("pInfoPlayer");
-      const playerSrc = document.getElementById("pInfoPlayerSrc");
-
-      subtitle.textContent = `${group}/${filename}`;
-      loading.classList.remove("hidden");
-      content.classList.add("hidden");
-
-      playerSrc.src = `/audio-processed/play/${encodeURIComponent(group)}/${encodeURIComponent(filename)}`;
-      player.load();
-      document.getElementById("pInfoModal").classList.remove("hidden");
-
-      try {
-        const res = await fetch(`/audio-processed/info/${encodeURIComponent(group)}/${encodeURIComponent(filename)}`);
-        const data = await res.json();
-
-        loading.classList.add("hidden");
-        content.classList.remove("hidden");
-
-        renderKvGrid("propsGrid", data.props);
-        renderKvGrid("demoGrid", data.demographics?.highlight);
-
-        // Renderização de Gráficos usando o Visualizador Unificado (DRY)
-        if (data.plots) {
-            AudioVisualizer.plotLine("waveChart", data.plots.waveform, "Tempo (s)", "Amplitude", { color: "#2563eb", height: 250 });
-            AudioVisualizer.plotLine("specChart", data.plots.spectrum, "Frequência (Hz)", "Magnitude", { color: "#16a34a", height: 250 });
-        }
-      } catch (e) {
-        loading.textContent = "Erro ao carregar informações.";
-        console.error(e);
-      }
-    }
-
-    document.addEventListener("keydown", (e) => {
-      if (e.key === "Escape" && !pInfoModal.classList.contains("hidden")) closePInfo();
-    });
-
-
+  <script>
     // Modal SSE: Extração features
     const fxModal = document.getElementById("fxModal");
     const fxSubtitle = document.getElementById("fxSubtitle");

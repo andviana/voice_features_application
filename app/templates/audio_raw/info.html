@@ -1,34 +1,134 @@
 {% extends "base.html" %}
-{% block title %}Info - {{ props.filename }}{% endblock %}
+{% block title %}Informação Áudio Raw - {{ filename }}{% endblock %}
 
 {% block content %}
-  <div class="rounded-2xl bg-white p-6 shadow-sm">
-    <div class="flex items-start justify-between gap-4">
-      <div>
-        <h1 class="text-xl font-semibold">Info do áudio</h1>
-        <p class="mt-1 text-sm text-slate-600">
-          <span class="rounded bg-slate-100 px-2 py-0.5 font-mono text-xs">{{ props.rel_id }}</span>
-        </p>
-      </div>
-
-      <a class="rounded-xl border px-4 py-2 text-sm hover:bg-slate-50" href="/audio-raw">
-        Voltar
-      </a>
+<div class="rounded-2xl bg-white p-6 shadow-sm">
+  <div class="flex flex-wrap items-start justify-between gap-4">
+    <div>
+      <h1 class="text-2xl font-semibold">Informação do Áudio Bruto</h1>
+      <p class="mt-1 font-mono text-xs text-slate-600">{{ group }}/{{ filename }}</p>
     </div>
-
-    <div class="mt-4 rounded-xl border bg-slate-950 p-4">
-      <audio controls class="w-full">
-        <source src="{{ url_for('audio_raw.play_audio', group=props.group, filename=props.filename) }}" type="audio/wav" />
-      </audio>
-    </div>
-
-    <div class="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
-      {% for k, v in props_dict.items() %}
-        <div class="rounded-xl border bg-slate-50 p-3">
-          <div class="text-xs font-medium text-slate-600">{{ k }}</div>
-          <div class="mt-1 font-mono text-xs text-slate-900 break-all">{{ v }}</div>
-        </div>
-      {% endfor %}
-    </div>
+    <a href="javascript:window.history.back()"
+      class="rounded-xl border px-4 py-2 text-sm hover:bg-slate-50">
+      Voltar
+    </a>
   </div>
+
+  <div id="loading" class="mt-6 text-sm text-slate-600">Carregando dados...</div>
+  <div id="errorBox" class="mt-6 hidden rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"></div>
+
+  <div id="content" class="mt-6 hidden space-y-8">
+    <section class="rounded-2xl border p-4">
+      <div class="text-sm font-semibold">Player Áudio RAW</div>
+      <audio id="rawPlayer" controls class="mt-3 w-full"></audio>
+    </section>
+
+    <section class="rounded-2xl border p-4">
+      <div class="text-sm font-semibold">Dados do Participante</div>
+      <div id="demoGrid" class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3">
+        </div>
+    </section>
+
+    <section class="rounded-2xl border p-4">
+      <div class="text-sm font-semibold">Propriedades Técnicas (WAV)</div>
+      <div id="propsGrid" class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-4"></div>
+    </section>
+
+    <section class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+      <div class="rounded-2xl border p-4">
+        <div class="text-sm font-semibold">Waveform (Amplitude vs Tempo)</div>
+        <div id="waveRaw" class="mt-3 h-[300px]"></div>
+      </div>
+      <div class="rounded-2xl border p-4">
+        <div class="text-sm font-semibold">Distribuição de Amplitudes</div>
+        <div id="histRaw" class="mt-3 h-[300px]"></div>
+      </div>
+    </section>
+
+    <section class="grid grid-cols-1 gap-4">
+      <div class="rounded-2xl border p-4">
+        <div class="text-sm font-semibold">Espectro de Frequência (FFT)</div>
+        <div id="fftRaw" class="mt-3 h-[350px]"></div>
+      </div>
+      <div class="rounded-2xl border p-4">
+        <div class="text-sm font-semibold">Espectrograma (STFT)</div>
+        <div id="specgramRaw" class="mt-3 h-[400px]"></div>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="{{ url_for('static', filename='js/audio-visualizer.js') }}"></script>
+<script>
+  const group = {{ group|tojson }};
+  const filename = {{ filename|tojson }};
+
+  async function loadPage() {
+    const loading = document.getElementById("loading");
+    const content = document.getElementById("content");
+    const errorBox = document.getElementById("errorBox");
+
+    try {
+      // Reutiliza a lógica de dados, mas ignora a parte 'processed' no front
+      const res = await fetch(`/scientific-analysis/data/${encodeURIComponent(group)}/${encodeURIComponent(filename)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      // Configurar Player
+      document.getElementById("rawPlayer").src = data.raw.play_url;
+
+      // Renderizar dados demograficos
+      const demoGrid = document.getElementById("demoGrid");
+      const hi = data?.demographics?.highlight || {};
+
+      demoGrid.innerHTML = `
+        <div class="rounded-xl border bg-slate-50 p-3">
+          <div class="text-[11px] font-medium text-slate-500 uppercase">Grupo</div>
+          <div class="mt-1 font-mono text-sm text-slate-900">${hi.label || 'N/A'}</div>
+        </div>
+        <div class="rounded-xl border bg-slate-50 p-3">
+          <div class="text-[11px] font-medium text-slate-500 uppercase">Idade</div>
+          <div class="mt-1 font-mono text-sm text-slate-900">${hi.age || 'N/A'} anos</div>
+        </div>
+        <div class="rounded-xl border bg-slate-50 p-3">
+          <div class="text-[11px] font-medium text-slate-500 uppercase">Sexo</div>
+          <div class="mt-1 font-mono text-sm text-slate-900">${hi.sex || 'N/A'}</div>
+        </div>
+      `;
+      
+      // Renderizar Propriedades
+      const propsGrid = document.getElementById("propsGrid");
+      const p = data.raw.props;
+      const items = [
+        {k: "Taxa de Amostragem", v: `${p.sample_rate_hz} Hz`},
+        {k: "Duração", v: `${p.duration_sec.toFixed(2)}s`},
+        {k: "Canais", v: p.n_channels},
+        {k: "Tamanho", v: `${(p.size_bytes/1024).toFixed(1)} KB`}
+      ];
+      propsGrid.innerHTML = items.map(i => `
+        <div class="rounded-xl border bg-slate-50 p-3">
+          <div class="text-[11px] font-medium text-slate-500 uppercase">${i.k}</div>
+          <div class="mt-1 font-mono text-sm text-slate-900">${i.v}</div>
+        </div>
+      `).join("");
+
+      
+      // Renderizar Gráficos usando AudioVisualizer
+      const AV = AudioVisualizer;
+      AV.plotLine("waveRaw", data.raw.waveform, "Tempo (s)", "Amplitude", { color: "#2563eb" });
+      AV.plotHistogram("histRaw", data.raw.hist, "Amplitude", "Contagem", { color: "#2563eb" });
+      AV.plotLine("fftRaw", data.raw.spectrum, "Frequência (Hz)", "Magnitude", { color: "#2563eb" });
+      AV.plotHeatmap("specgramRaw", data.raw.spectrogram, "Tempo (s)", "Frequência (Hz)");
+
+      loading.classList.add("hidden");
+      content.classList.remove("hidden");
+    } catch (err) {
+      loading.classList.add("hidden");
+      errorBox.classList.remove("hidden");
+      errorBox.textContent = `Erro: ${err.message}`;
+    }
+  }
+  loadPage();
+</script>
 {% endblock %}
