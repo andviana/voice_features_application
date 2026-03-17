@@ -37,6 +37,7 @@ def create_app():
     from .blueprints.codes import bp as codes_bp
     from .blueprints.compare import bp as compare_bp
     from .blueprints.scientific_analysis import bp as scientific_analysis_bp
+    from .blueprints.optimize_tsallis import bp as optimize_tsallis_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(params_bp)
@@ -47,6 +48,7 @@ def create_app():
     app.register_blueprint(codes_bp)
     app.register_blueprint(compare_bp)
     app.register_blueprint(scientific_analysis_bp)
+    app.register_blueprint(optimize_tsallis_bp)
 
     # Blueprints API (Smorest)
     from .blueprints.api import params_api, pipeline_api

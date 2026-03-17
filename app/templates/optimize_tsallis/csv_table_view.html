@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{% block title %}Tabela CSV - {{ filename }}{% endblock %}
+
+{% block content %}
+<section class="space-y-6">
+  <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div class="border-b border-slate-100 bg-gradient-to-r from-cyan-50 via-white to-sky-50 px-6 py-6">
+      <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div>
+          <span class="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-medium uppercase tracking-wide text-cyan-700">
+            <span class="h-2 w-2 rounded-full bg-cyan-500"></span>
+            Visualização tabular
+          </span>
+
+          <h1 class="mt-3 text-2xl font-semibold tracking-tight text-slate-900">
+            {{ filename }}
+          </h1>
+
+          <p class="mt-2 text-sm leading-6 text-slate-600">
+            Visualização estruturada do arquivo CSV gerado pelo protocolo.
+          </p>
+        </div>
+
+        <div class="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+          <p><span class="font-semibold text-slate-800">Colunas:</span> {{ columns|length }}</p>
+          <p class="mt-1"><span class="font-semibold text-slate-800">Linhas:</span> {{ row_count }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="border-b border-slate-100 bg-slate-50 px-6 py-4">
+      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p class="text-sm text-slate-600">
+          Confira os dados antes de seguir para as próximas etapas do pipeline.
+        </p>
+
+        <div class="flex flex-wrap gap-2">
+          <a
+            href="{{ url_for('optimize_tsallis.download_opt_file', filename=filename) }}"
+            class="inline-flex items-center rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-700"
+          >
+            Download CSV
+          </a>
+
+          <a
+            href="javascript:history.back()"
+            class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+          >
+            Voltar
+          </a>
+        </div>
+      </div>
+    </div>
+
+    {% if records %}
+    <div class="overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-slate-200 text-sm">
+          <thead class="bg-slate-50">
+            <tr>
+              {% for column in columns %}
+              <th class="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-700">
+                {{ column }}
+              </th>
+              {% endfor %}
+            </tr>
+          </thead>
+
+          <tbody class="divide-y divide-slate-100 bg-white">
+            {% for row in records %}
+            <tr class="transition hover:bg-cyan-50/40">
+              {% for column in columns %}
+              <td class="whitespace-nowrap px-4 py-3 text-slate-700">
+                {{ row[column] }}
+              </td>
+              {% endfor %}
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+    {% else %}
+    <div class="px-6 py-10">
+      <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+        O arquivo CSV não possui linhas para exibição.
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

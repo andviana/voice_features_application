@@ -1,10 +1,15 @@
+import matplotlib
+matplotlib.use("Agg")
+
 import pandas as pd
 import numpy as np
 import os
 import logging
 from datetime import datetime
-from typing import Dict, List, Tuple
-from app.config import Config
+from typing import  List
+import matplotlib.pyplot as plt
+import seaborn as sns
+
 
 # Importação dos módulos do orientador
 from extract_features.tsallis_amplitude_hist import amplitude_histogram_distribution
@@ -16,23 +21,46 @@ from app.utils.path_utils import PathUtils
 
 class TsallisOptimizationService:
     def __init__(self):        
-        self.output_dir = (PathUtils.data_root() / "optimization_results").resolve
-        os.makedirs(self.output_dir, exist_ok=True)
+       # 1. Obtemos o Path e garantimos a execução do .resolve()
+        path_base = PathUtils.data_root() / "optimization_results"
+        path_absoluto = path_base.resolve()
         
-        # Configuração de Log Específico para Otimização
-        self.log_file = os.path.join(self.output_dir, f'opt_log_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log')
+        # 2. Convertemos OBRIGATORIAMENTE para string antes de qualquer uso
+        self.output_dir = str(path_absoluto)
+        
+        # 3. Verificamos se é string antes de criar a pasta
+        if not isinstance(self.output_dir, str):
+            raise TypeError(f"Erro interno: self.output_dir deveria ser str, mas é {type(self.output_dir)}")
+            
+        os.makedirs(self.output_dir, exist_ok=True)        
+        # Configuração de Log
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.log_file = os.path.join(self.output_dir, f'opt_log_{timestamp}.log')
+        
         self.logger = logging.getLogger('TsallisOptimization')
-        handler = logging.FileHandler(self.log_file)
-        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler)
-        self.logger.setLevel(logging.INFO)
+        if not self.logger.handlers:
+            handler = logging.FileHandler(self.log_file)
+            formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
+            self.logger.setLevel(logging.INFO)
 
+    
     def run_full_optimization(self, hc_signals: List[np.ndarray], pd_signals: List[np.ndarray]) -> str:
         """
         Executa o protocolo completo e salva os artefatos em CSV.
         """
+
         try:
+            if not isinstance(hc_signals, list) or not isinstance(pd_signals, list):
+                raise TypeError("hc_signals e pd_signals devem ser listas de numpy arrays.")
+
+            if hc_signals and not isinstance(hc_signals[0], np.ndarray):
+                raise TypeError("hc_signals deve conter numpy arrays individuais.")
+
+            if pd_signals and not isinstance(pd_signals[0], np.ndarray):
+                raise TypeError("pd_signals deve conter numpy arrays individuais.")
+
             self.logger.info("Iniciando Protocolo de Otimização de Tsallis (Base 8kHz).")
             
             # 1. Gerar Distribuições de Probabilidade (Artefato 1)
@@ -82,3 +110,132 @@ class TsallisOptimizationService:
         except Exception as e:
             self.logger.error(f"Erro crítico na otimização: {str(e)}", exc_info=True)
             raise e
+        
+        
+    def get_latest_results(self) -> dict:
+        """Retorna metadados sobre o último processamento realizado."""
+        import glob
+        
+        # Procura o log mais recente
+        log_files = glob.glob(os.path.join(self.output_dir, "opt_log_*.log"))
+        latest_log = max(log_files, key=os.path.getctime) if log_files else None
+        
+        log_content = ""
+        if latest_log:
+            with open(latest_log, 'r') as f:
+                log_content = f.read()
+
+        return {
+            "has_results": os.path.exists(os.path.join(self.output_dir, 'summary_q_optimization.csv')),
+            "latest_log_content": log_content,
+            "files": {
+                "summary": "summary_q_optimization.csv",
+                "cache_hc": "dist_cache_hc.csv",
+                "cache_pd": "dist_cache_pd.csv"
+            }
+        }
+    
+
+    def run_group_comparison(self, hc_data, pd_data):
+        hc_signals, hc_names = hc_data
+        pd_signals, pd_names = pd_data
+
+        results = []
+
+        def process_group(signals, names, group_label):
+            group_res = []
+            for s, name in zip(signals, names):
+                _, d_ext = estimate_q_extensivity(s)
+                _, d_fit = estimate_q_from_amplitude_qgaussian(s)
+                group_res.append({
+                    "Arquivo": name,
+                    "Grupo": group_label,
+                    "q_Extensividade": d_ext['q_ext_hat'],
+                    "q_Gaussian_Fit": d_fit['q_qgauss_hat']
+                })
+            return group_res
+
+        self.logger.info("Iniciando comparação por grupos...")
+        results.extend(process_group(hc_signals, hc_names, "HC"))
+        results.extend(process_group(pd_signals, pd_names, "PD"))
+
+        df = pd.DataFrame(results)
+        detailed_path = os.path.join(self.output_dir, 'group_comparison_detailed.csv')
+        df.to_csv(detailed_path, index=False)
+
+        plt.figure(figsize=(12, 5))
+
+        plt.subplot(1, 2, 1)
+        sns.boxplot(x='Grupo', y='q_Extensividade', data=df, palette='Set2')
+        plt.title('Comparação: q de Extensividade')
+
+        plt.subplot(1, 2, 2)
+        sns.boxplot(x='Grupo', y='q_Gaussian_Fit', data=df, palette='Set1')
+        plt.title('Comparação: q de Ajuste Gaussiano')
+
+        plot_path = os.path.join(self.output_dir, 'comparison_plot.png')
+        plt.tight_layout()
+        plt.savefig(plot_path)
+        plt.close()
+
+        summary = (
+            df.groupby('Grupo')
+            .agg(
+                total_amostras=('Arquivo', 'count'),
+                q_Extensividade_media=('q_Extensividade', 'mean'),
+                q_Extensividade_std=('q_Extensividade', 'std'),
+                q_Gaussian_Fit_media=('q_Gaussian_Fit', 'mean'),
+                q_Gaussian_Fit_std=('q_Gaussian_Fit', 'std'),
+            )
+            .reset_index()
+            .fillna('')
+            .round(6)
+        )
+
+        summary_path = os.path.join(self.output_dir, 'group_stats_summary.csv')
+        summary.to_csv(summary_path, index=False)
+
+        return {
+            "detailed_csv": "group_comparison_detailed.csv",
+            "stats_csv": "group_stats_summary.csv",
+            "plot_image": "comparison_plot.png",
+            "summary_columns": summary.columns.tolist(),
+            "summary_records": summary.to_dict(orient='records')
+        }
+    
+
+    def get_latest_group_comparison_results(self) -> dict:
+        detailed_csv = os.path.join(self.output_dir, 'group_comparison_detailed.csv')
+        stats_csv = os.path.join(self.output_dir, 'group_stats_summary.csv')
+        plot_image = os.path.join(self.output_dir, 'comparison_plot.png')
+
+        has_results = (
+            os.path.exists(detailed_csv)
+            and os.path.exists(stats_csv)
+            and os.path.exists(plot_image)
+        )
+
+        if not has_results:
+            return {
+                "has_results": False,
+                "summary_columns": [],
+                "summary_records": [],
+                "files": {
+                    "detailed_csv": "group_comparison_detailed.csv",
+                    "stats_csv": "group_stats_summary.csv",
+                    "plot_image": "comparison_plot.png"
+                }
+            }
+
+        df_summary = pd.read_csv(stats_csv).fillna('')
+
+        return {
+            "has_results": True,
+            "summary_columns": df_summary.columns.tolist(),
+            "summary_records": df_summary.to_dict(orient='records'),
+            "files": {
+                "detailed_csv": "group_comparison_detailed.csv",
+                "stats_csv": "group_stats_summary.csv",
+                "plot_image": "comparison_plot.png"
+            }
+        }

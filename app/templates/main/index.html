@@ -15,7 +15,7 @@
     </div>
 
     <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      
+
       <!-- Parâmetros -->
       <a href="/params/view"
          class="group rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-sm">
@@ -74,9 +74,31 @@
           </p>
         </div>
       </a>
-
+     
       <!-- Compare -->
       <a href="/compare"
+         class="group rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-sm">
+        <div class="flex flex-col items-center text-center">
+          <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9" fill="none" viewBox="0 0 24 24"
+              stroke="currentColor" stroke-width="1.8">
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M4.5 5.25h15A2.25 2.25 0 0121.75 7.5v9A2.25 2.25 0 0119.5 18.75h-15A2.25 2.25 0 012.25 16.5v-9A2.25 2.25 0 014.5 5.25z" />
+              <path stroke-linecap="round" stroke-linejoin="round"
+                d="M8.25 9.75l7.5 2.25-7.5 2.25v-4.5z" />
+            </svg>
+          </div>
+          <h2 class="text-lg font-semibold text-slate-900 group-hover:text-blue-700">Comparação</h2>
+          <p class="mt-2 text-sm leading-6 text-slate-600">
+            Comparação de dos áudios pré-processados com o raw.
+          </p>
+        </div>
+      </a>
+
+
+      
+      <!--  Tsallis-optimization-protocol -->
+      <a href="/tsallis-optimization-protocol"
          class="group rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-sm">
         <div class="flex flex-col items-center text-center">
           <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
@@ -88,9 +110,9 @@
                 d="M4.5 3.75h15A2.25 2.25 0 0121.75 6v12A2.25 2.25 0 0119.5 20.25h-15A2.25 2.25 0 012.25 18V6A2.25 2.25 0 014.5 3.75z" />
             </svg>
           </div>
-          <h2 class="text-lg font-semibold text-slate-900 group-hover:text-blue-700">Compare</h2>
+          <h2 class="text-lg font-semibold text-slate-900 group-hover:text-blue-700">Tsallis Optimization</h2>
           <p class="mt-2 text-sm leading-6 text-slate-600">
-            Comparação lado a lado entre áudios raw e processados, espectro, waveform e features.
+            Tsallis q optimization protocol
           </p>
         </div>
       </a>
