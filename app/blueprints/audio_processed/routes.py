@@ -28,7 +28,7 @@ def list_audios_processed():
                 counts[group] = 0
     
     # Verificação de integridade dos datasets de features
-    features_dir = PathUtils.data_root() / PathUtils.FEATURES_ROOT
+    features_dir = PathUtils.features_root()
     hc_ready = (features_dir / "HC_AH" / PathUtils.FEATURES_FILE).exists()
     pd_ready = (features_dir / "PD_AH" / PathUtils.FEATURES_FILE).exists()
 

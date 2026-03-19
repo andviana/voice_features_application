@@ -2,8 +2,6 @@
 {% block title %}Comparação Raw vs Processed{% endblock %}
 
 {% block content %}
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <div class="grid grid-cols-1 gap-4 lg:grid-cols-[320px_1fr]">
   <!-- Painel esquerdo -->
   <aside class="rounded-2xl border bg-white p-4">
@@ -33,79 +31,40 @@
   </aside>
 
   <!-- Painel direito -->
-  <section class="rounded-2xl border bg-white p-4">
+  <section class="rounded-2xl border bg-white p-6">
     <div class="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h1 class="text-lg font-semibold">Detalhes do paciente</h1>
+        <h1 class="text-lg font-semibold">Detalhes do paciente / Comparação</h1>
         <p id="selSubtitle" class="mt-1 text-xs text-slate-600 font-mono">Selecione um áudio à esquerda</p>
       </div>
     </div>
 
-    <div id="loading" class="mt-4 text-sm text-slate-600 hidden">Carregando...</div>
+    <div id="loading" class="mt-6 text-sm text-slate-600 hidden">Carregando dados...</div>
+    <div id="errorBox" class="mt-6 hidden rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"></div>
 
-    <div id="content" class="mt-4 hidden space-y-6">
+    <div id="content" class="mt-6 hidden space-y-8">
 
-      <!-- Players -->
-      <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div class="rounded-xl border p-3">
+      <!-- Áudio -->
+      <section class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div class="rounded-2xl border p-4">
           <div class="text-sm font-semibold">Áudio RAW</div>
-          <audio id="rawPlayer" controls class="mt-2 w-full">
-            <source id="rawSrc" src="" type="audio/wav" />
-          </audio>
+          <audio id="rawPlayer" controls class="mt-3 w-full"></audio>
         </div>
-        <div class="rounded-xl border p-3">
+        <div class="rounded-2xl border p-4">
           <div class="text-sm font-semibold">Áudio PROCESSED</div>
-          <audio id="procPlayer" controls class="mt-2 w-full">
-            <source id="procSrc" src="" type="audio/wav" />
-          </audio>
+          <audio id="procPlayer" controls class="mt-3 w-full"></audio>
         </div>
-      </div>
+      </section>
 
       <!-- Demografia -->
-      <div class="rounded-xl border p-3">
-        <div class="text-sm font-semibold">Dados demográficos</div>
-        <div id="demoRow" class="mt-2 grid grid-cols-1 gap-3 md:grid-cols-3"></div>
-      </div>
+      <section class="rounded-2xl border p-4">
+        <div class="text-sm font-semibold">Dados Demográficos</div>
+        <div id="demoGrid" class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3"></div>
+      </section>
 
-      <!-- Waveform -->
-      <div class="grid grid-cols-1 gap-4 ">
-        <div class="rounded-xl border p-3">
-          <div class="text-sm font-semibold">Waveform RAW (amplitude vs tempo)</div>
-          <canvas id="waveRaw" class="mt-2"></canvas>
-        </div>
-        <div class="rounded-xl border p-3">
-          <div class="text-sm font-semibold">Waveform PROCESSED (amplitude vs tempo)</div>
-          <canvas id="waveProc" class="mt-2"></canvas>
-        </div>
-      </div>
-
-      <!-- Espectro -->
-      <div class="grid grid-cols-1 gap-4 ">
-        <div class="rounded-xl border p-3">
-          <div class="text-sm font-semibold">Espectro RAW (magnitude vs frequência)</div>
-          <canvas id="specRaw" class="mt-2"></canvas>
-        </div>
-        <div class="rounded-xl border p-3">
-          <div class="text-sm font-semibold">Espectro PROCESSED (magnitude vs frequência)</div>
-          <canvas id="specProc" class="mt-2"></canvas>
-        </div>
-      </div>
-
-        <!-- Espectrograma -->
-        <div class="grid grid-cols-1 gap-4 ">
-        <div class="rounded-xl border p-3">
-            <div class="text-sm font-semibold">Espectrograma RAW (STFT)</div>
-            <canvas id="specgramRaw" class="mt-2"></canvas>
-        </div>
-        <div class="rounded-xl border p-3">
-            <div class="text-sm font-semibold">Espectrograma PROCESSED (STFT)</div>
-            <canvas id="specgramProc" class="mt-2"></canvas>
-        </div>
-        </div>
-
-      <!-- Props lado a lado -->
-      <div class="rounded-xl border p-3">
-        <div class="text-sm font-semibold">Propriedades (RAW vs PROCESSED)</div>
+      <!-- Propriedades -->
+      <section class="rounded-2xl border p-4">
+        <div class="text-sm font-semibold">Propriedades do arquivo (RAW vs PROCESSED)</div>
         <div class="mt-3 overflow-hidden rounded-xl border">
           <table class="w-full text-xs">
             <thead class="bg-slate-50">
@@ -118,10 +77,94 @@
             <tbody id="propsTable" class="divide-y"></tbody>
           </table>
         </div>
-      </div>
+      </section>
 
-      <!-- Features mean/std -->
-      <div class="rounded-xl border p-3">
+      <!-- Waveform -->
+      <section class="grid grid-cols-1 gap-4 ">
+        <div class="rounded-2xl border p-4">
+          <div class="text-sm font-semibold">Waveform RAW</div>
+          <div id="waveRaw" class="mt-3 h-[320px]"></div>
+        </div>
+        <div class="rounded-2xl border p-4">
+          <div class="text-sm font-semibold">Waveform PROCESSED</div>
+          <div id="waveProc" class="mt-3 h-[320px]"></div>
+        </div>
+      </section>
+
+      <!-- FFT -->
+      <section class="grid grid-cols-1 gap-4 ">
+        <div class="rounded-2xl border p-4">
+          <div class="text-sm font-semibold">Espectro RAW (FFT)</div>
+          <div id="fftRaw" class="mt-3 h-[320px]"></div>
+        </div>
+        <div class="rounded-2xl border p-4">
+          <div class="text-sm font-semibold">Espectro PROCESSED (FFT)</div>
+          <div id="fftProc" class="mt-3 h-[320px]"></div>
+        </div>
+      </section>
+
+      <!-- Spectrogram -->
+      <section class="grid grid-cols-1 gap-4 ">
+        <div class="rounded-2xl border p-4">
+          <div class="text-sm font-semibold">Espectrograma RAW (STFT)</div>
+          <div id="specgramRaw" class="mt-3 h-[420px]"></div>
+        </div>
+        <div class="rounded-2xl border p-4">
+          <div class="text-sm font-semibold">Espectrograma PROCESSED (STFT)</div>
+          <div id="specgramProc" class="mt-3 h-[420px]"></div>
+        </div>
+      </section>
+
+      <!-- PSD F0 Zoom -->
+      <section class="grid grid-cols-1 gap-4 ">
+        <div class="rounded-2xl border p-4">
+          <div class="text-sm font-semibold">Zoom no pico da frequência fundamental (PSD) - RAW</div>
+          <div id="psdRaw" class="mt-3 h-[320px]"></div>
+        </div>
+        <div class="rounded-2xl border p-4">
+          <div class="text-sm font-semibold">Zoom no pico da frequência fundamental (PSD) - PROCESSED</div>
+          <div id="psdProc" class="mt-3 h-[320px]"></div>
+        </div>
+      </section>
+
+      <!-- Efeito do filtro -->
+      <section class="rounded-2xl border p-4">
+        <div class="text-sm font-semibold">Efeito do filtro no conteúdo espectral (RAW vs PROCESSED)</div>
+        <div id="filterEffectChart" class="mt-3 h-[420px]"></div>
+      </section>
+
+      <!-- Autocorrelation -->
+      <section class="grid grid-cols-1 gap-4 ">
+        <div class="rounded-2xl border p-4">
+          <div class="text-sm font-semibold">Autocorrelação RAW</div>
+          <div id="autoRaw" class="mt-3 h-[320px]"></div>
+        </div>
+        <div class="rounded-2xl border p-4">
+          <div class="text-sm font-semibold">Autocorrelação PROCESSED</div>
+          <div id="autoProc" class="mt-3 h-[320px]"></div>
+        </div>
+      </section>
+
+      <!-- Histogram -->
+      <section class="grid grid-cols-1 gap-4 ">
+        <div class="rounded-2xl border p-4">
+          <div class="text-sm font-semibold">Distribuição estatística das amplitudes - RAW</div>
+          <div id="histRaw" class="mt-3 h-[320px]"></div>
+        </div>
+        <div class="rounded-2xl border p-4">
+          <div class="text-sm font-semibold">Distribuição estatística das amplitudes - PROCESSED</div>
+          <div id="histProc" class="mt-3 h-[320px]"></div>
+        </div>
+      </section>
+
+      <!-- Filter response -->
+      <section class="rounded-2xl border p-4">
+        <div class="text-sm font-semibold">Resposta teórica do filtro Butterworth</div>
+        <div id="butterChart" class="mt-3 h-[420px]"></div>
+      </section>
+
+      <!-- Features paired -->
+      <section class="rounded-2xl border p-4">
         <div class="text-sm font-semibold">Features extraídas (mean / std)</div>
         <div class="mt-3 overflow-hidden rounded-xl border">
           <table class="w-full text-xs">
@@ -132,18 +175,33 @@
                 <th>Std</th>
               </tr>
             </thead>
-            <tbody id="featTable" class="divide-y"></tbody>
+            <tbody id="featuresPairedTable" class="divide-y"></tbody>
           </table>
         </div>
-        <p class="mt-2 text-[11px] text-slate-500">
-          NaN e 0 aparecem em vermelho para facilitar triagem.
-        </p>
-      </div>
+      </section>
+
+      <!-- Features single -->
+      <section class="rounded-2xl border p-4">
+        <div class="text-sm font-semibold">Features adicionais</div>
+        <div class="mt-3 overflow-hidden rounded-xl border">
+          <table class="w-full text-xs">
+            <thead class="bg-slate-50">
+              <tr class="[&>th]:px-3 [&>th]:py-2 text-left">
+                <th>Feature</th>
+                <th>Valor</th>
+              </tr>
+            </thead>
+            <tbody id="featuresSingleTable" class="divide-y"></tbody>
+          </table>
+        </div>
+      </section>
 
     </div>
   </section>
 </div>
 
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script src="{{ url_for('static', filename='js/audio-visualizer.js') }}"></script>
 <script>
   // ---- search filter
   const searchBox = document.getElementById("searchBox");
@@ -155,133 +213,45 @@
     });
   });
 
-  // ---- charts
-  let cWaveRaw=null, cWaveProc=null, cSpecRaw=null, cSpecProc=null;
-  let specgramRawCanvas = null, specgramProcCanvas = null;
-
-
-  function destroyCharts() {
-    [cWaveRaw,cWaveProc,cSpecRaw,cSpecProc].forEach(c => { if (c) c.destroy(); });
-    cWaveRaw=cWaveProc=cSpecRaw=cSpecProc=null;
-
-    // limpa espectrogramas desenhados manualmente
-    const rawCanvas = document.getElementById("specgramRaw");
-    const procCanvas = document.getElementById("specgramProc");
-    if (rawCanvas) {
-        const ctx = rawCanvas.getContext("2d");
-        ctx.clearRect(0, 0, rawCanvas.width, rawCanvas.height);
-    }
-    if (procCanvas) {
-        const ctx = procCanvas.getContext("2d");
-        ctx.clearRect(0, 0, procCanvas.width, procCanvas.height);
-    }
-  }
-
-  function drawSpectrogram(canvasId, spec) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas || !spec || !spec.z || !spec.z.length) return;
-
-    const ctx = canvas.getContext("2d");
-
-    const z = spec.z; // [freq][time]
-    const nFreq = z.length;
-    const nTime = z[0]?.length || 0;
-    if (!nFreq || !nTime) return;
-
-    const width = canvas.clientWidth || 500;
-    const height = 260;
-
-    canvas.width = width;
-    canvas.height = height;
-
-    // min/max para escala de cor
-    let min = Infinity;
-    let max = -Infinity;
-    for (let i = 0; i < nFreq; i++) {
-      for (let j = 0; j < nTime; j++) {
-        const v = z[i][j];
-        if (v < min) min = v;
-        if (v > max) max = v;
-      }
-    }
-    const range = Math.max(max - min, 1e-6);
-
-    const cellW = width / nTime;
-    const cellH = height / nFreq;
-
-    function colorMap(v) {
-      const x = (v - min) / range; // 0..1
-      // colormap simples: azul -> ciano -> amarelo -> vermelho
-      const r = Math.floor(255 * Math.max(0, Math.min(1, 1.5 * x)));
-      const g = Math.floor(255 * Math.max(0, Math.min(1, 1.5 * (1 - Math.abs(x - 0.5) * 2))));
-      const b = Math.floor(255 * Math.max(0, Math.min(1, 1.2 * (1 - x))));
-      return `rgb(${r},${g},${b})`;
-    }
-
-    // desenha freq baixa embaixo
-    for (let fi = 0; fi < nFreq; fi++) {
-      for (let ti = 0; ti < nTime; ti++) {
-        const v = z[fi][ti];
-        ctx.fillStyle = colorMap(v);
-        ctx.fillRect(
-          ti * cellW,
-          height - (fi + 1) * cellH,
-          Math.ceil(cellW),
-          Math.ceil(cellH)
-        );
-      }
-    }
-
-    // borda
-    ctx.strokeStyle = "#CBD5E1";
-    ctx.strokeRect(0, 0, width, height);
-  }
-
-  function mkLineChart(canvasId, labels, data, xLabel, yLabel, label) {
-    const ctx = document.getElementById(canvasId);
-    return new Chart(ctx, {
-      type: "line",
-      data: {
-        labels: labels,
-        datasets: [{ label, data, borderWidth: 1, pointRadius: 0 }]
-      },
-      options: {
-        responsive: true,
-        animation: false,
-        scales: {
-          x: { title: { display: true, text: xLabel } },
-          y: { title: { display: true, text: yLabel } }
-        }
-      }
+  function purgeAllPlots() {
+    [
+      "waveRaw", "waveProc",
+      "fftRaw", "fftProc",
+      "specgramRaw", "specgramProc",
+      "psdRaw", "psdProc",
+      "filterEffectChart",
+      "autoRaw", "autoProc",
+      "histRaw", "histProc",
+      "butterChart"
+    ].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) Plotly.purge(el);
     });
   }
 
-  // ---- helpers
+  function badValue(v) {
+    if (v === null || v === undefined) return true;
+    const n = Number(v);
+    return (!Number.isFinite(n)) || n === 0;
+  }
+
+  function formatValue(v) {
+    if (v === null || v === undefined) return "NaN";
+    if (typeof v === "number") return Number.isFinite(v) ? String(v) : "NaN";
+    return String(v);
+  }
+
+  function cellClass(v) {
+    return badValue(v) ? "font-mono text-red-600 font-semibold" : "font-mono";
+  }
+
   function kvCard(k, v) {
-    const d = document.createElement("div");
-    d.className = "rounded-xl border bg-slate-50 p-3";
-    d.innerHTML = `
-      <div class="text-[11px] font-medium text-slate-600">${k}</div>
-      <div class="mt-1 font-mono text-xs text-slate-900 break-all">${v ?? ""}</div>
+    return `
+      <div class="rounded-xl border bg-slate-50 p-3">
+        <div class="text-[11px] font-medium text-slate-600">${k}</div>
+        <div class="mt-1 font-mono text-xs text-slate-900 break-all">${formatValue(v)}</div>
+      </div>
     `;
-    return d;
-  }
-
-  function isBad(val) {
-    if (val === null || val === undefined) return false;
-    const s = String(val).trim().toLowerCase();
-    if (s === "nan") return true;
-    const n = Number(val);
-    return Number.isFinite(n) && n === 0;
-  }
-
-  function fmt(val) {
-    if (val === null || val === undefined) return "";
-    if (typeof val === "number") {
-      if (!Number.isFinite(val)) return "NaN";
-      return String(val);
-    }
-    return String(val);
   }
 
   async function loadPatient(btn) {
@@ -289,91 +259,130 @@
     const filename = btn.dataset.filename;
 
     document.getElementById("selSubtitle").textContent = `${group}/${filename}`;
-    document.getElementById("loading").classList.remove("hidden");
-    document.getElementById("content").classList.add("hidden");
-    destroyCharts();
+    
+    const loading = document.getElementById("loading");
+    const errorBox = document.getElementById("errorBox");
+    const content = document.getElementById("content");
 
-    const res = await fetch(`/compare/info/${encodeURIComponent(group)}/${encodeURIComponent(filename)}`);
-    if (!res.ok) {
-      document.getElementById("loading").textContent = "Erro ao carregar.";
-      return;
-    }
-    let data;
+    loading.classList.remove("hidden");
+    content.classList.add("hidden");
+    errorBox.classList.add("hidden");
+    purgeAllPlots();
+
     try {
-        data = await res.json();
-    } catch (e) {
-        console.error("Falha parse JSON:", e);
-        const txt = await res.text();
-        console.error("Resposta bruta:", txt.slice(0, 500));
-        document.getElementById("loading").textContent = "Erro ao interpretar resposta (JSON inválido).";
-        return;
+      const res = await fetch(`/compare/info/${encodeURIComponent(group)}/${encodeURIComponent(filename)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+
+      const ranges = data.ranges || {};
+
+      // 1. Players
+      document.getElementById("rawPlayer").src = data.raw.play_url;
+      document.getElementById("procPlayer").src = data.processed.play_url;
+
+      // Demografia
+      const demoGrid = document.getElementById("demoGrid");
+      const hi = data?.demographics?.highlight || {};
+      demoGrid.innerHTML = [
+        kvCard("label", hi.label),
+        kvCard("age", hi.age),
+        kvCard("sex", hi.sex),
+      ].join("");
+
+      // Propriedades
+      const propKeys = [
+        "compname", "duration_sec", "n_channels", "sample_width_bytes",
+        "comptype", "n_frames", "sample_rate_hz", "size_bytes"
+      ];
+      const propsTable = document.getElementById("propsTable");
+      propsTable.innerHTML = "";
+      for (const k of propKeys) {
+        const rawV = data.raw.props[k];
+        const procV = data.processed.props[k];
+        propsTable.innerHTML += `
+          <tr class="[&>td]:px-3 [&>td]:py-2">
+            <td class="font-mono">${k}</td>
+            <td class="font-mono">${formatValue(rawV)}</td>
+            <td class="font-mono">${formatValue(procV)}</td>
+          </tr>
+        `;
+      }
+
+      // 2. Renderização de Gráficos via AudioVisualizer
+      const AV = AudioVisualizer;
+
+      AV.plotLine("waveRaw", data.raw.waveform, "Tempo (s)", "Amplitude", 
+        { color: "#2563eb", xRange: ranges.waveform?.x, yRange: ranges.waveform?.y });
+      AV.plotLine("waveProc", data.processed.waveform, "Tempo (s)", "Amplitude", 
+        { color: "#16a34a", xRange: ranges.waveform?.x, yRange: ranges.waveform?.y });
+      
+      AV.plotLine("fftRaw", data.raw.spectrum, "Frequência (Hz)", "Magnitude", 
+        { color: "#2563eb", xRange: ranges.spectrum?.x, yRange: ranges.spectrum?.y });
+      AV.plotLine("fftProc", data.processed.spectrum, "Frequência (Hz)", "Magnitude", 
+        { color: "#16a34a", xRange: ranges.spectrum?.x, yRange: ranges.spectrum?.y });
+
+      AV.plotHeatmap("specgramRaw", data.raw.spectrogram, "Tempo (s)", "Frequência (Hz)",
+        { xRange: ranges.spectrogram?.x, yRange: ranges.spectrogram?.y, zRange: ranges.spectrogram?.z });
+      AV.plotHeatmap("specgramProc", data.processed.spectrogram, "Tempo (s)", "Frequência (Hz)",
+        { xRange: ranges.spectrogram?.x, yRange: ranges.spectrogram?.y, zRange: ranges.spectrogram?.z });
+
+      AV.plotLine("psdRaw", data.raw.psd_f0, "Frequência (Hz)", "PSD",
+        { color: "#2563eb", xRange: ranges.psd_f0?.x, yRange: ranges.psd_f0?.y });
+      AV.plotLine("psdProc", data.processed.psd_f0, "Frequência (Hz)", "PSD",
+        { color: "#16a34a", xRange: ranges.psd_f0?.x, yRange: ranges.psd_f0?.y });
+
+      AV.plotFilterEffect(
+        "filterEffectChart",
+        data.raw.psd_f0,
+        data.processed.psd_f0,
+        data.filter_response.cutoff_hz
+      );
+
+      AV.plotLine("autoRaw", data.raw.autocorr, "Lag (s)", "Autocorrelação", 
+        { color: "#2563eb",xRange: ranges.autocorr?.x, yRange: ranges.autocorr?.y });
+      AV.plotLine("autoProc", data.processed.autocorr, "Lag (s)", "Autocorrelação",
+        { color: "#16a34a", xRange: ranges.autocorr?.x, yRange: ranges.autocorr?.y });
+
+      AV.plotHistogram("histRaw", data.raw.hist, "Amplitude", "Contagem",
+        { color: "#2563eb", xRange: ranges.hist?.x, yRange: ranges.hist?.y });
+      AV.plotHistogram("histProc", data.processed.hist, "Amplitude", "Contagem", 
+        { color: "#16a34a", xRange: ranges.hist?.x, yRange: ranges.hist?.y });
+      
+      AV.plotButterResponse("butterChart", data.filter_response);
+
+      // Features paired
+      const pairedT = document.getElementById("featuresPairedTable");
+      pairedT.innerHTML = "";
+      for (const r of data.features.paired || []) {
+        pairedT.innerHTML += `
+          <tr class="[&>td]:px-3 [&>td]:py-2">
+            <td class="font-mono">${r.feature}</td>
+            <td class="${cellClass(r.mean)}">${formatValue(r.mean)}</td>
+            <td class="${cellClass(r.std)}">${formatValue(r.std)}</td>
+          </tr>
+        `;
+      }
+
+      // Features single
+      const singleT = document.getElementById("featuresSingleTable");
+      singleT.innerHTML = "";
+      for (const r of data.features.single || []) {
+        singleT.innerHTML += `
+          <tr class="[&>td]:px-3 [&>td]:py-2">
+            <td class="font-mono">${r.feature}</td>
+            <td class="${cellClass(r.value)}">${formatValue(r.value)}</td>
+          </tr>
+        `;
+      }
+
+      loading.classList.add("hidden");
+      content.classList.remove("hidden");
+    } catch (err) {
+      loading.classList.add("hidden");
+      errorBox.classList.remove("hidden");
+      errorBox.textContent = `Erro ao carregar análise: ${err}`;
+      console.error(err);
     }
-
-    // players
-    const rawSrc = document.getElementById("rawSrc");
-    const procSrc = document.getElementById("procSrc");
-    rawSrc.src = data.raw.play_url;
-    procSrc.src = data.processed.play_url;
-    document.getElementById("rawPlayer").load();
-    document.getElementById("procPlayer").load();
-
-    // demographics
-    const demoRow = document.getElementById("demoRow");
-    demoRow.innerHTML = "";
-    const hi = data?.demographics?.highlight || {};
-    demoRow.appendChild(kvCard("label", hi.label ?? ""));
-    demoRow.appendChild(kvCard("age", hi.age ?? ""));
-    demoRow.appendChild(kvCard("sex", hi.sex ?? ""));
-
-    // charts
-    const wfR = data.raw.plots.waveform;
-    const wfP = data.processed.plots.waveform;
-    const spR = data.raw.plots.spectrum;
-    const spP = data.processed.plots.spectrum;
-
-    cWaveRaw = mkLineChart("waveRaw", wfR?.t || [], wfR?.y || [], "Tempo (s)", "Amplitude", "raw");
-    cWaveProc = mkLineChart("waveProc", wfP?.t || [], wfP?.y || [], "Tempo (s)", "Amplitude", "processed");
-    cSpecRaw = mkLineChart("specRaw", spR?.f || [], spR?.mag || [], "Frequência (Hz)", "Magnitude", "raw");
-    cSpecProc = mkLineChart("specProc", spP?.f || [], spP?.mag || [], "Frequência (Hz)", "Magnitude", "processed");
-
-    const sgR = data.raw.spectrogram;
-    const sgP = data.processed.spectrogram;
-    drawSpectrogram("specgramRaw", sgR);
-    drawSpectrogram("specgramProc", sgP);
-
-    // props side-by-side
-    const propsKeys = ["compname","duration_sec","n_channels","sample_width_bytes","comptype","n_frames","sample_rate_hz","size_bytes"];
-    const propsTable = document.getElementById("propsTable");
-    propsTable.innerHTML = "";
-    for (const k of propsKeys) {
-      const tr = document.createElement("tr");
-      tr.className = "[&>td]:px-3 [&>td]:py-2";
-      tr.innerHTML = `
-        <td class="font-mono">${k}</td>
-        <td class="font-mono">${fmt(data.raw.props[k])}</td>
-        <td class="font-mono">${fmt(data.processed.props[k])}</td>
-      `;
-      propsTable.appendChild(tr);
-    }
-
-    // features mean/std
-    const featTable = document.getElementById("featTable");
-    featTable.innerHTML = "";
-    (data.features || []).forEach(r => {
-      const meanBad = isBad(r.mean);
-      const stdBad = isBad(r.std);
-      const tr = document.createElement("tr");
-      tr.className = "[&>td]:px-3 [&>td]:py-2";
-      tr.innerHTML = `
-        <td class="font-mono">${r.feature}</td>
-        <td class="font-mono ${meanBad ? "text-red-600 font-semibold" : ""}">${fmt(r.mean)}</td>
-        <td class="font-mono ${stdBad ? "text-red-600 font-semibold" : ""}">${fmt(r.std)}</td>
-      `;
-      featTable.appendChild(tr);
-    });
-
-    document.getElementById("loading").classList.add("hidden");
-    document.getElementById("content").classList.remove("hidden");
   }
 </script>
 {% endblock %}

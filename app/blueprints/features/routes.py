@@ -9,6 +9,7 @@ from typing import Optional
 from . import bp
 from app.services.features_extract_service import start_extract_features_run
 from app.services.pipeline_service import pipeline_manager
+from app.utils.path_utils import PathUtils
 
 
 @bp.post("/features/extract-all")
@@ -60,8 +61,7 @@ def get_features_status():
     Localização: data/features/HC_AH e data/features/PD_AH
     """
     # Define a base do projeto (ajuste se a estrutura for diferente)
-    base_dir = Path(current_app.root_path).parent
-    features_dir = base_dir / "data" / "features"
+    features_dir = PathUtils.features_root()
     
     groups = ["HC_AH", "PD_AH"]
     status = {}
@@ -89,8 +89,7 @@ def get_features_status():
 @bp.get("/features/list")
 def list_features():
     """Lista os arquivos CSV gerados pela extração de características."""
-    base_data = Path(current_app.config["DATA_DIR"]).resolve()
-    features_root = base_data / "features"
+    features_root = PathUtils.features_root()
     
     files_info = []
     allowed_groups = ["HC_AH", "PD_AH"]
@@ -114,8 +113,7 @@ def list_features():
 @bp.get("/features/download/<group>/<filename>")
 def download_features(group: str, filename: str):
     """Permite baixar o CSV para análise no Excel/Pandas."""
-    base_data = Path(current_app.config["DATA_DIR"]).resolve()
-    fpath = (base_data / "features" / group / filename).resolve()
+    fpath = (PathUtils.features_root() / group / filename).resolve()
     
     if not fpath.exists():
         abort(404)
@@ -128,8 +126,7 @@ def view_dataset_details(group: str, filename: str):
     """
     Carrega o dataset e gera estatísticas descritivas completas.
     """
-    base_data = Path(current_app.config["DATA_DIR"]).resolve()
-    fpath = (base_data / "features" / group / filename).resolve()
+    fpath = (PathUtils.features_root() / group / filename).resolve()
     
     if not fpath.exists():
         abort(404)

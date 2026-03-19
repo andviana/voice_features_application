@@ -10,14 +10,13 @@ from typing import  List
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from app.utils.path_utils import PathUtils
 
 # Importação dos módulos do orientador
 from extract_features.tsallis_amplitude_hist import amplitude_histogram_distribution
 from extract_features.tsallis_q_gridsearch import grid_search_q
 from extract_features.tsallis_q_extensivity import estimate_q_extensivity
 from extract_features.tsallis_q_qgaussian_fit import estimate_q_from_amplitude_qgaussian
-
-from app.utils.path_utils import PathUtils
 
 class TsallisOptimizationService:
     def __init__(self):        

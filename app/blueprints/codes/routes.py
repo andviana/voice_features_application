@@ -4,6 +4,7 @@ from flask import render_template, abort, Blueprint, current_app
 from pygments import highlight
 from pygments.lexers import PythonLexer
 from pygments.formatters import HtmlFormatter
+from app.utils.path_utils import PathUtils
 from . import bp
 
 
@@ -21,7 +22,7 @@ ALLOWED_CODES = {
 @bp.route('/codes/<folder>/<filename>')
 def view_code(folder=None, filename=None):
     # Pasta raiz do projeto (app está dentro, pre_proccess e extract_features ao lado)
-    project_root = Path(current_app.root_path).parent
+    project_root = PathUtils.project_root()
     
     code_content = ""
     pygments_css = HtmlFormatter().get_style_defs('.highlight')
