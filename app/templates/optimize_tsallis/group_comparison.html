@@ -135,6 +135,82 @@
           >
         </div>
       </div>
+
+      <!-- Secao de Dispersão 1D (Gaussian Fit) -->
+      <div class="px-6 pt-0">
+        <h3 class="mb-4 text-lg font-semibold text-slate-900 border-t border-slate-100 pt-6">1D Scatter: q de Ajuste Gaussiano</h3>
+        <div class="overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
+          <div id="gaussian-fit-plot" class="w-full"></div>
+          
+          <div class="mt-4 overflow-hidden rounded-lg border border-slate-200">
+            <table class="min-w-full divide-y divide-slate-200 text-sm text-center">
+              <thead class="bg-slate-50">
+                <tr>
+                  <th class="px-4 py-2 font-semibold text-slate-700">Grupo</th>
+                  <th class="px-4 py-2 font-semibold text-slate-700">Valores &gt; 2.2</th>
+                  <th class="px-4 py-2 font-semibold text-slate-700">Valores &lt; 0.8</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 bg-white">
+                <tr>
+                  <td class="px-4 py-2 font-medium text-slate-900 border-r">HC</td>
+                  <td id="hc-above" class="px-4 py-2 font-mono text-blue-700">0</td>
+                  <td id="hc-below" class="px-4 py-2 font-mono text-blue-700">0</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-2 font-medium text-slate-900 border-r">PD</td>
+                  <td id="pd-above" class="px-4 py-2 font-mono text-red-700">0</td>
+                  <td id="pd-below" class="px-4 py-2 font-mono text-red-700">0</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Novos Gráficos Individuais (HC e PD) -->
+          <div class="mt-6 space-y-4">
+            <div id="gaussian-fit-plot-hc" class="w-full"></div>
+            <div id="gaussian-fit-plot-pd" class="w-full"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Secao de Dispersão 1D (Extensividade) -->
+      <div class="p-6 pt-0">
+        <h3 class="mb-4 text-lg font-semibold text-slate-900">1D Scatter: q de Extensividade</h3>
+        <div class="overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
+          <div id="extensivity-plot" class="w-full"></div>
+          
+          <div class="mt-4 overflow-hidden rounded-lg border border-slate-200">
+            <table class="min-w-full divide-y divide-slate-200 text-sm text-center">
+              <thead class="bg-slate-50">
+                <tr>
+                  <th class="px-4 py-2 font-semibold text-slate-700">Grupo</th>
+                  <th class="px-4 py-2 font-semibold text-slate-700">Valores &gt; 2.2</th>
+                  <th class="px-4 py-2 font-semibold text-slate-700">Valores &lt; 0.8</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-slate-100 bg-white">
+                <tr>
+                  <td class="px-4 py-2 font-medium text-slate-900 border-r">HC</td>
+                  <td id="ext-hc-above" class="px-4 py-2 font-mono text-blue-700">0</td>
+                  <td id="ext-hc-below" class="px-4 py-2 font-mono text-blue-700">0</td>
+                </tr>
+                <tr>
+                  <td class="px-4 py-2 font-medium text-slate-900 border-r">PD</td>
+                  <td id="ext-pd-above" class="px-4 py-2 font-mono text-red-700">0</td>
+                  <td id="ext-pd-below" class="px-4 py-2 font-mono text-red-700">0</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Novos Gráficos Individuais (HC e PD) extensividade -->
+          <div class="mt-6 space-y-4">
+            <div id="extensivity-plot-hc" class="w-full"></div>
+            <div id="extensivity-plot-pd" class="w-full"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -206,6 +282,7 @@
   </div>
 </section>
 
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 <script>
   const btnRunComp = document.getElementById('btn-run-comp');
   const loader = document.getElementById('loader');
@@ -245,6 +322,258 @@
     });
   }
 
+  function renderGaussianFitPlot(records) {
+    if (!records || records.length === 0) return;
+
+    const hc_x = records.filter(r => r.Grupo === 'HC').map(r => Number(r.q_Gaussian_Fit));
+    const pd_x = records.filter(r => r.Grupo === 'PD').map(r => Number(r.q_Gaussian_Fit));
+
+    const traceHC = {
+      x: hc_x,
+      y: Array(hc_x.length).fill(0),
+      mode: 'markers',
+      type: 'scatter',
+      name: 'HC (Azul)',
+      marker: { color: 'blue', opacity: 0.5, size: 12, line: { color: 'darkblue', width: 1 } },
+      text: records.filter(r => r.Grupo === 'HC').map(r => r.Arquivo),
+      hovertemplate: '<b>%{text}</b><br>Gaussian Fit: %{x}<extra></extra>'
+    };
+
+    const tracePD = {
+      x: pd_x,
+      y: Array(pd_x.length).fill(0),
+      mode: 'markers',
+      type: 'scatter',
+      name: 'PD (Vermelho)',
+      marker: { color: 'red', opacity: 0.5, size: 12, line: { color: 'darkred', width: 1 } },
+      text: records.filter(r => r.Grupo === 'PD').map(r => r.Arquivo),
+      hovertemplate: '<b>%{text}</b><br>Gaussian Fit: %{x}<extra></extra>'
+    };
+
+    const hc_mean = hc_x.reduce((a, b) => a + b, 0) / hc_x.length;
+    const pd_mean = pd_x.reduce((a, b) => a + b, 0) / pd_x.length;
+
+    const layout = {
+      title: 'Sobreposição de Ajuste Gaussiano (HC vs PD)',
+      xaxis: { title: 'q_Gaussian_Fit', range: [0, 3] },
+      yaxis: { visible: false, range: [-1, 1], zeroline: false },
+      height: 180,
+      margin: { l: 20, r: 20, t: 40, b: 40 },
+      hovermode: 'closest',
+      plot_bgcolor: "white",
+      paper_bgcolor: "white",
+      shapes: [
+        {
+          type: 'line',
+          x0: hc_mean,
+          x1: hc_mean,
+          y0: -0.5,
+          y1: 0.5,
+          line: { color: 'darkblue', dash: 'dot', width: 2 }
+        },
+        {
+          type: 'line',
+          x0: pd_mean,
+          x1: pd_mean,
+          y0: -0.5,
+          y1: 0.5,
+          line: { color: 'darkred', dash: 'dot', width: 2 }
+        }
+      ],
+      annotations: [
+        {
+          x: hc_mean,
+          y: 0.6,
+          xref: 'x',
+          yref: 'y',
+          text: `${hc_mean.toFixed(3)} (HC)`,
+          showarrow: false,
+          font: { color: 'darkblue', size: 10 }
+        },
+        {
+          x: pd_mean,
+          y: -0.6,
+          xref: 'x',
+          yref: 'y',
+          text: `${pd_mean.toFixed(3)} (PD)`,
+          showarrow: false,
+          font: { color: 'darkred', size: 10 }
+        }
+      ]
+    };
+
+    Plotly.newPlot('gaussian-fit-plot', [traceHC, tracePD], layout, { responsive: true, displayModeBar: false });
+
+    // === Plot Individual HC ===
+    const layoutHC = {
+      title: 'Ajuste Gaussiano - Somente HC',
+      xaxis: { title: 'q_Gaussian_Fit', range: [0, 3] },
+      yaxis: { visible: false, range: [-1, 1], zeroline: false },
+      height: 160,
+      margin: { l: 20, r: 20, t: 40, b: 40 },
+      hovermode: 'closest',
+      plot_bgcolor: "white",
+      paper_bgcolor: "white",
+      shapes: [
+        { type: 'line', x0: hc_mean, x1: hc_mean, y0: -0.5, y1: 0.5, line: { color: 'darkblue', dash: 'dot', width: 2 } },
+        { type: 'line', x0: 0.8, x1: 0.8, y0: -0.5, y1: 0.5, line: { color: 'gray', dash: 'dash', width: 1 } },
+        { type: 'line', x0: 2.2, x1: 2.2, y0: -0.5, y1: 0.5, line: { color: 'gray', dash: 'dash', width: 1 } }
+      ],
+      annotations: [
+        { x: hc_mean, y: 0.65, xref: 'x', yref: 'y', text: `${hc_mean.toFixed(3)} (Média)`, showarrow: false, font: { color: 'darkblue', size: 10 } },
+        { x: 0.8, y: -0.65, xref: 'x', yref: 'y', text: `0.8`, showarrow: false, font: { color: 'gray', size: 10 } },
+        { x: 2.2, y: -0.65, xref: 'x', yref: 'y', text: `2.2`, showarrow: false, font: { color: 'gray', size: 10 } }
+      ]
+    };
+    Plotly.newPlot('gaussian-fit-plot-hc', [traceHC], layoutHC, { responsive: true, displayModeBar: false });
+
+    // === Plot Individual PD ===
+    const layoutPD = {
+      title: 'Ajuste Gaussiano - Somente PD',
+      xaxis: { title: 'q_Gaussian_Fit', range: [0, 3] },
+      yaxis: { visible: false, range: [-1, 1], zeroline: false },
+      height: 160,
+      margin: { l: 20, r: 20, t: 40, b: 40 },
+      hovermode: 'closest',
+      plot_bgcolor: "white",
+      paper_bgcolor: "white",
+      shapes: [
+        { type: 'line', x0: pd_mean, x1: pd_mean, y0: -0.5, y1: 0.5, line: { color: 'darkred', dash: 'dot', width: 2 } },
+        { type: 'line', x0: 0.8, x1: 0.8, y0: -0.5, y1: 0.5, line: { color: 'gray', dash: 'dash', width: 1 } },
+        { type: 'line', x0: 2.2, x1: 2.2, y0: -0.5, y1: 0.5, line: { color: 'gray', dash: 'dash', width: 1 } }
+      ],
+      annotations: [
+        { x: pd_mean, y: 0.65, xref: 'x', yref: 'y', text: `${pd_mean.toFixed(3)} (Média)`, showarrow: false, font: { color: 'darkred', size: 10 } },
+        { x: 0.8, y: -0.65, xref: 'x', yref: 'y', text: `0.8`, showarrow: false, font: { color: 'gray', size: 10 } },
+        { x: 2.2, y: -0.65, xref: 'x', yref: 'y', text: `2.2`, showarrow: false, font: { color: 'gray', size: 10 } }
+      ]
+    };
+    Plotly.newPlot('gaussian-fit-plot-pd', [tracePD], layoutPD, { responsive: true, displayModeBar: false });
+
+    // Atualização da Tabela 2x2
+    const hc_above = hc_x.filter(v => v > 2.2).length;
+    const hc_below = hc_x.filter(v => v < 0.8).length;
+    const pd_above = pd_x.filter(v => v > 2.2).length;
+    const pd_below = pd_x.filter(v => v < 0.8).length;
+
+    document.getElementById('hc-above').textContent = hc_above;
+    document.getElementById('hc-below').textContent = hc_below;
+    document.getElementById('pd-above').textContent = pd_above;
+    document.getElementById('pd-below').textContent = pd_below;
+  }
+
+  function renderExtensivityPlot(records) {
+    if (!records || records.length === 0) return;
+
+    const hc_x = records.filter(r => r.Grupo === 'HC').map(r => Number(r.q_Extensividade));
+    const pd_x = records.filter(r => r.Grupo === 'PD').map(r => Number(r.q_Extensividade));
+
+    const traceHC = {
+      x: hc_x,
+      y: Array(hc_x.length).fill(0),
+      mode: 'markers',
+      type: 'scatter',
+      name: 'HC (Azul)',
+      marker: { color: 'blue', opacity: 0.5, size: 12, line: { color: 'darkblue', width: 1 } },
+      text: records.filter(r => r.Grupo === 'HC').map(r => r.Arquivo),
+      hovertemplate: '<b>%{text}</b><br>Extensividade: %{x}<extra></extra>'
+    };
+
+    const tracePD = {
+      x: pd_x,
+      y: Array(pd_x.length).fill(0),
+      mode: 'markers',
+      type: 'scatter',
+      name: 'PD (Vermelho)',
+      marker: { color: 'red', opacity: 0.5, size: 12, line: { color: 'darkred', width: 1 } },
+      text: records.filter(r => r.Grupo === 'PD').map(r => r.Arquivo),
+      hovertemplate: '<b>%{text}</b><br>Extensividade: %{x}<extra></extra>'
+    };
+
+    const hc_mean = hc_x.reduce((a, b) => a + b, 0) / hc_x.length;
+    const pd_mean = pd_x.reduce((a, b) => a + b, 0) / pd_x.length;
+
+    const layout = {
+      title: 'Sobreposição de q_Extensividade (HC vs PD)',
+      xaxis: { title: 'q_Extensividade', range: [0, 3] },
+      yaxis: { visible: false, range: [-1, 1], zeroline: false },
+      height: 180,
+      margin: { l: 20, r: 20, t: 40, b: 40 },
+      hovermode: 'closest',
+      plot_bgcolor: "white",
+      paper_bgcolor: "white",
+      shapes: [
+        { type: 'line', x0: hc_mean, x1: hc_mean, y0: -0.5, y1: 0.5, line: { color: 'darkblue', dash: 'dot', width: 2 } },
+        { type: 'line', x0: pd_mean, x1: pd_mean, y0: -0.5, y1: 0.5, line: { color: 'darkred', dash: 'dot', width: 2 } }
+      ],
+      annotations: [
+        { x: hc_mean, y: 0.6, xref: 'x', yref: 'y', text: `${hc_mean.toFixed(3)} (HC)`, showarrow: false, font: { color: 'darkblue', size: 10 } },
+        { x: pd_mean, y: -0.6, xref: 'x', yref: 'y', text: `${pd_mean.toFixed(3)} (PD)`, showarrow: false, font: { color: 'darkred', size: 10 } }
+      ]
+    };
+
+    Plotly.newPlot('extensivity-plot', [traceHC, tracePD], layout, { responsive: true, displayModeBar: false });
+
+    // === Plot Individual HC ===
+    const layoutHC = {
+      title: 'Extensividade - Somente HC',
+      xaxis: { title: 'q_Extensividade', range: [0, 3] },
+      yaxis: { visible: false, range: [-1, 1], zeroline: false },
+      height: 160,
+      margin: { l: 20, r: 20, t: 40, b: 40 },
+      hovermode: 'closest',
+      plot_bgcolor: "white",
+      paper_bgcolor: "white",
+      shapes: [
+        { type: 'line', x0: hc_mean, x1: hc_mean, y0: -0.5, y1: 0.5, line: { color: 'darkblue', dash: 'dot', width: 2 } },
+        { type: 'line', x0: 0.8, x1: 0.8, y0: -0.5, y1: 0.5, line: { color: 'gray', dash: 'dash', width: 1 } },
+        { type: 'line', x0: 2.2, x1: 2.2, y0: -0.5, y1: 0.5, line: { color: 'gray', dash: 'dash', width: 1 } }
+      ],
+      annotations: [
+        { x: hc_mean, y: 0.65, xref: 'x', yref: 'y', text: `${hc_mean.toFixed(3)} (Média)`, showarrow: false, font: { color: 'darkblue', size: 10 } },
+        { x: 0.8, y: -0.65, xref: 'x', yref: 'y', text: `0.8`, showarrow: false, font: { color: 'gray', size: 10 } },
+        { x: 2.2, y: -0.65, xref: 'x', yref: 'y', text: `2.2`, showarrow: false, font: { color: 'gray', size: 10 } }
+      ]
+    };
+    Plotly.newPlot('extensivity-plot-hc', [traceHC], layoutHC, { responsive: true, displayModeBar: false });
+
+    // === Plot Individual PD ===
+    const layoutPD = {
+      title: 'Extensividade - Somente PD',
+      xaxis: { title: 'q_Extensividade', range: [0, 3] },
+      yaxis: { visible: false, range: [-1, 1], zeroline: false },
+      height: 160,
+      margin: { l: 20, r: 20, t: 40, b: 40 },
+      hovermode: 'closest',
+      plot_bgcolor: "white",
+      paper_bgcolor: "white",
+      shapes: [
+        { type: 'line', x0: pd_mean, x1: pd_mean, y0: -0.5, y1: 0.5, line: { color: 'darkred', dash: 'dot', width: 2 } },
+        { type: 'line', x0: 0.8, x1: 0.8, y0: -0.5, y1: 0.5, line: { color: 'gray', dash: 'dash', width: 1 } },
+        { type: 'line', x0: 2.2, x1: 2.2, y0: -0.5, y1: 0.5, line: { color: 'gray', dash: 'dash', width: 1 } }
+      ],
+      annotations: [
+        { x: pd_mean, y: 0.65, xref: 'x', yref: 'y', text: `${pd_mean.toFixed(3)} (Média)`, showarrow: false, font: { color: 'darkred', size: 10 } },
+        { x: 0.8, y: -0.65, xref: 'x', yref: 'y', text: `0.8`, showarrow: false, font: { color: 'gray', size: 10 } },
+        { x: 2.2, y: -0.65, xref: 'x', yref: 'y', text: `2.2`, showarrow: false, font: { color: 'gray', size: 10 } }
+      ]
+    };
+    Plotly.newPlot('extensivity-plot-pd', [tracePD], layoutPD, { responsive: true, displayModeBar: false });
+
+    // Atualização da Tabela 2x2
+    const hc_above = hc_x.filter(v => v > 2.2).length;
+    const hc_below = hc_x.filter(v => v < 0.8).length;
+    const pd_above = pd_x.filter(v => v > 2.2).length;
+    const pd_below = pd_x.filter(v => v < 0.8).length;
+
+    document.getElementById('ext-hc-above').textContent = hc_above;
+    document.getElementById('ext-hc-below').textContent = hc_below;
+    document.getElementById('ext-pd-above').textContent = pd_above;
+    document.getElementById('ext-pd-below').textContent = pd_below;
+  }
+
+
+
   btnRunComp.addEventListener('click', async function () {
     btnRunComp.disabled = true;
     loader.classList.remove('hidden');
@@ -276,6 +605,8 @@
         detailedViewLink.href = '/view-csv-table/' + data.detailed_csv;
 
         renderSummaryTable(data.summary_columns, data.summary_records);
+        renderGaussianFitPlot(data.detailed_records);
+        renderExtensivityPlot(data.detailed_records);
       } else {
         errorBox.textContent = 'Erro: ' + (res.message || 'falha desconhecida.');
         errorBox.classList.remove('hidden');
@@ -287,5 +618,12 @@
       errorBox.classList.remove('hidden');
     }
   });
+
+  // Render on initial page load if data exists
+  {% if results.has_results %}
+    const initialRecords = {{ results.detailed_records | tojson | safe }};
+    renderGaussianFitPlot(initialRecords);
+    renderExtensivityPlot(initialRecords);
+  {% endif %}
 </script>
 {% endblock %}

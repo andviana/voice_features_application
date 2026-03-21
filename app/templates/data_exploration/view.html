@@ -1,0 +1,141 @@
+{% extends "base.html" %}
+
+{% block title %}Exploração de Dados{% endblock %}
+
+{% block content %}
+<section class="space-y-6">
+  <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div class="border-b border-slate-100 bg-gradient-to-r from-teal-50 via-white to-green-50 px-6 py-6">
+      <div>
+        <h1 class="text-2xl font-semibold tracking-tight text-slate-900">Exploração Descritiva de Dados</h1>
+        <p class="mt-2 text-sm text-slate-600">
+          Visualização geral das distribuições demográficas baseadas no manifest e de características acústicas (Pitch, Jitter, Shimmer).
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- DEMOGRAPHICS -->
+  <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div class="border-b border-slate-100 px-6 py-4">
+      <h2 class="text-lg font-semibold text-slate-900">Demográficos (manifest.csv)</h2>
+    </div>
+    
+    <div class="p-6">
+      <h3 class="mb-4 text-md font-semibold text-slate-800">1. Amostras por Grupo</h3>
+      <div id="plot-samples" class="w-full mb-8 h-64"></div>
+
+      <h3 class="mb-4 text-md font-semibold text-slate-800 border-t pt-6">2. Distribuição por Sexo</h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div id="plot-sex-total" class="h-64"></div>
+        <div id="plot-sex-hc" class="h-64"></div>
+        <div id="plot-sex-pd" class="h-64"></div>
+      </div>
+
+      <h3 class="mb-4 text-md font-semibold text-slate-800 border-t pt-6">3. Boxplot de Idade</h3>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div id="plot-age-total" class="h-64"></div>
+        <div id="plot-age-hc" class="h-64"></div>
+        <div id="plot-age-pd" class="h-64"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ACOUSTIC FEATURES -->
+  <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div class="border-b border-slate-100 px-6 py-4">
+      <h2 class="text-lg font-semibold text-slate-900">Características Acústicas (features.csv)</h2>
+    </div>
+    
+    <div class="p-6 space-y-8">
+      <div>
+        <h3 class="mb-4 text-md font-semibold text-slate-800">Pitch Distribution (Boxplots Pareados)</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div id="plot-pitch-mean" class="h-64"></div>
+          <div id="plot-pitch-min" class="h-64"></div>
+          <div id="plot-pitch-max" class="h-64"></div>
+          <div id="plot-pitch-cv" class="h-64"></div>
+        </div>
+      </div>
+
+      <div class="border-t pt-6">
+        <h3 class="mb-4 text-md font-semibold text-slate-800">Local Jitter Distribution</h3>
+        <div id="plot-jitter-box" class="h-64"></div>
+      </div>
+
+      <div class="border-t pt-6">
+        <h3 class="mb-4 text-md font-semibold text-slate-800">Local Shimmer Distribution</h3>
+        <div id="plot-shimmer-box" class="h-64"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+  const data = {{ data | tojson | safe }};
+  
+  // 1. Amostras
+  Plotly.newPlot("plot-samples", [{
+    x: ['HC', 'PD'],
+    y: [data.demographics.groups.HC, data.demographics.groups.PD],
+    type: 'bar',
+    marker: { color: ['#2563eb', '#dc2626'] }
+  }], {
+    title: 'Quantidade Total de Amostras',
+    margin: { t: 40, b:40 },
+    height: 250,
+  }, { responsive: true, displayModeBar: false });
+
+  // 2. Sexo (Total, HC, PD)
+  function plotPie(div, counts, label) {
+    Plotly.newPlot(div, [{
+      values: [counts.M, counts.F],
+      labels: ['Masculino', 'Feminino'],
+      type: 'pie',
+      marker: { colors: ['#0ea5e9', '#ec4899'] }
+    }], { title: `Sexo (${label})`, margin: {t:40, b:20, l:20, r:20} }, { responsive: true, displayModeBar: false });
+  }
+  plotPie('plot-sex-total', data.demographics.sex_total.Total, 'Total');
+  plotPie('plot-sex-hc', data.demographics.sex_total.HC, 'HC');
+  plotPie('plot-sex-pd', data.demographics.sex_total.PD, 'PD');
+
+  // 3. Idade Boxplots
+  function plotBox(div, vals, label, color) {
+    Plotly.newPlot(div, [{
+      y: vals,
+      type: 'box',
+      name: label,
+      marker: { color: color }
+    }], { title: `Idade (${label})`, margin: {t:40, b:40} }, { responsive: true, displayModeBar: false });
+  }
+  plotBox('plot-age-total', data.demographics.age.Total, 'Total', '#64748b');
+  plotBox('plot-age-hc', data.demographics.age.HC, 'HC', '#2563eb');
+  plotBox('plot-age-pd', data.demographics.age.PD, 'PD', '#dc2626');
+
+  // 4. Features (Pitch, Jitter, Shimmer) - Pareados em Boxplot
+  function plotGroupedBox(div, hc_vals, pd_vals, title, yAxisTitle) {
+    Plotly.newPlot(div, [
+      { y: hc_vals, type: 'box', name: 'HC', marker: { color: '#2563eb' } },
+      { y: pd_vals, type: 'box', name: 'PD', marker: { color: '#dc2626' } }
+    ], {
+      title: title,
+      margin: {t:40, b:40},
+      yaxis: { title: yAxisTitle },
+      boxmode: 'group',
+      plot_bgcolor: "white",
+      paper_bgcolor: "white"
+    }, { responsive: true, displayModeBar: false });
+  }
+
+  // Pitch (4 Sub-métricas)
+  plotGroupedBox('plot-pitch-mean', data.features.pitch.HC.f0_mean_hz, data.features.pitch.PD.f0_mean_hz, 'F0 Mean (Hz)', 'Frequência (Hz)');
+  plotGroupedBox('plot-pitch-min', data.features.pitch.HC.f0_min_hz, data.features.pitch.PD.f0_min_hz, 'F0 Min (Hz)', 'Frequência (Hz)');
+  plotGroupedBox('plot-pitch-max', data.features.pitch.HC.f0_max_hz, data.features.pitch.PD.f0_max_hz, 'F0 Max (Hz)', 'Frequência (Hz)');
+  plotGroupedBox('plot-pitch-cv', data.features.pitch.HC.f0_cv, data.features.pitch.PD.f0_cv, 'F0 Coef. Var.', 'Variação');
+
+  // Jitter e Shimmer
+  plotGroupedBox('plot-jitter-box', data.features.jitter.HC, data.features.jitter.PD, 'Local Jitter', 'Jitter (%)');
+  plotGroupedBox('plot-shimmer-box', data.features.shimmer.HC, data.features.shimmer.PD, 'Local Shimmer', 'Shimmer (%)');
+
+</script>
+{% endblock %}

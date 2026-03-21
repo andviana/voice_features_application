@@ -199,7 +199,8 @@ class TsallisOptimizationService:
             "stats_csv": "group_stats_summary.csv",
             "plot_image": "comparison_plot.png",
             "summary_columns": summary.columns.tolist(),
-            "summary_records": summary.to_dict(orient='records')
+            "summary_records": summary.to_dict(orient='records'),
+            "detailed_records": df.to_dict(orient='records')
         }
     
 
@@ -219,6 +220,7 @@ class TsallisOptimizationService:
                 "has_results": False,
                 "summary_columns": [],
                 "summary_records": [],
+                "detailed_records": [],
                 "files": {
                     "detailed_csv": "group_comparison_detailed.csv",
                     "stats_csv": "group_stats_summary.csv",
@@ -227,11 +229,13 @@ class TsallisOptimizationService:
             }
 
         df_summary = pd.read_csv(stats_csv).fillna('')
+        df_detailed = pd.read_csv(detailed_csv).fillna('')
 
         return {
             "has_results": True,
             "summary_columns": df_summary.columns.tolist(),
             "summary_records": df_summary.to_dict(orient='records'),
+            "detailed_records": df_detailed.to_dict(orient='records'),
             "files": {
                 "detailed_csv": "group_comparison_detailed.csv",
                 "stats_csv": "group_stats_summary.csv",
