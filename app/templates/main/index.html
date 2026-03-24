@@ -2,284 +2,237 @@
 {% block title %}Início{% endblock %}
 
 {% block content %}
-  <div class="rounded-2xl bg-white p-6 shadow-sm">
-    <div class="mb-8 flex items-start justify-between gap-4">
+<div class="mb-12 text-center md:text-left">
+  <h1 class="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl">
+    Voice Features Analytics
+  </h1>
+  <p class="mt-4 max-w-2xl text-lg leading-relaxed text-slate-600">
+    Plataforma integrada de pré-processamento e extração de características acústicas, focada no apoio ao diagnóstico de Parkinson (PD) através de inteligência artificial.
+  </p>
+</div>
+
+<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+
+  <!-- Parâmetros -->
+  <a href="/params/view"
+     class="group relative flex flex-col items-start justify-between rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-indigo-200 hover:shadow-xl hover:shadow-indigo-100/50">
+    <div class="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-500 transition-colors group-hover:bg-indigo-500 group-hover:text-white">
+      <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6h3m-7.5 6h12m-9 6h6M7.5 3.75h9A2.25 2.25 0 0118.75 6v12A2.25 2.25 0 0116.5 20.25h-9A2.25 2.25 0 015.25 18V6A2.25 2.25 0 017.5 3.75z" />
+      </svg>
+    </div>
+    <h2 class="text-lg font-semibold text-slate-900 group-hover:text-indigo-700">Parâmetros</h2>
+    <p class="mt-2 text-sm leading-relaxed text-slate-500 group-hover:text-slate-600">
+      Gestão e visualização de constantes, limiares e caminhos do sistema.
+    </p>
+    <div class="mt-4 flex transform items-center text-sm font-medium text-indigo-600 opacity-0 transition-all group-hover:opacity-100">
+      Acessar <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+    </div>
+  </a>
+
+  <!-- Áudios Raw -->
+  <a href="/audio-raw"
+     class="group relative flex flex-col items-start justify-between rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-xl hover:shadow-blue-100/50">
+    <div class="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-blue-500 transition-colors group-hover:bg-blue-500 group-hover:text-white">
+      <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 19V6l10-2.25v13" />
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9 17a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19 14.75a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+      </svg>
+    </div>
+    <h2 class="text-lg font-semibold text-slate-900 group-hover:text-blue-700">Áudios Brutos</h2>
+    <p class="mt-2 text-sm leading-relaxed text-slate-500 group-hover:text-slate-600">
+      Repositório original de capturas acústicas sem processamento.
+    </p>
+    <div class="mt-4 flex transform items-center text-sm font-medium text-blue-600 opacity-0 transition-all group-hover:opacity-100">
+      Explorar <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+    </div>
+  </a>
+
+  <!-- Curadoria de Áudio -->
+  <a href="/audio-curation"
+     class="group relative flex flex-col items-start justify-between rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-emerald-200 hover:shadow-xl hover:shadow-emerald-100/50">
+    <div class="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-500 transition-colors group-hover:bg-emerald-500 group-hover:text-white">
+      <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+      </svg>
+    </div>
+    <h2 class="text-lg font-semibold text-slate-900 group-hover:text-emerald-700">Curadoria</h2>
+    <p class="mt-2 text-sm leading-relaxed text-slate-500 group-hover:text-slate-600">
+      Limpeza de dados manuais (Lixeira) e sincronização do manifest.
+    </p>
+    <div class="mt-4 flex transform items-center text-sm font-medium text-emerald-600 opacity-0 transition-all group-hover:opacity-100">
+      Gerenciar <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+    </div>
+  </a>
+
+  <!-- Áudios Processados -->
+  <a href="/audio-processed"
+     class="group relative flex flex-col items-start justify-between rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-cyan-200 hover:shadow-xl hover:shadow-cyan-100/50">
+    <div class="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-50 text-cyan-500 transition-colors group-hover:bg-cyan-500 group-hover:text-white">
+      <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 5.25h15A2.25 2.25 0 0121.75 7.5v9A2.25 2.25 0 0119.5 18.75h-15A2.25 2.25 0 012.25 16.5v-9A2.25 2.25 0 014.5 5.25z" />
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8.25 9.75l7.5 2.25-7.5 2.25v-4.5z" />
+      </svg>
+    </div>
+    <h2 class="text-lg font-semibold text-slate-900 group-hover:text-cyan-700">Processados</h2>
+    <p class="mt-2 text-sm leading-relaxed text-slate-500 group-hover:text-slate-600">
+      Catálogo de aúdios após VAD e silenciamento de bordas.
+    </p>
+    <div class="mt-4 flex transform items-center text-sm font-medium text-cyan-600 opacity-0 transition-all group-hover:opacity-100">
+      Visualizar <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+    </div>
+  </a>
+ 
+  <!-- Compare -->
+  <a href="/compare"
+     class="group relative flex flex-col items-start justify-between rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-violet-200 hover:shadow-xl hover:shadow-violet-100/50">
+    <div class="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-50 text-violet-500 transition-colors group-hover:bg-violet-500 group-hover:text-white">
+      <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2" />
+      </svg>
+    </div>
+    <h2 class="text-lg font-semibold text-slate-900 group-hover:text-violet-700">Comparação Visual</h2>
+    <p class="mt-2 text-sm leading-relaxed text-slate-500 group-hover:text-slate-600">
+      Alinhamento espectral pareado (Bruto x Processado).
+    </p>
+    <div class="mt-4 flex transform items-center text-sm font-medium text-violet-600 opacity-0 transition-all group-hover:opacity-100">
+      Comparar <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+    </div>
+  </a>
+
+  <!-- Group Comparison -->
+  <a href="/group-comparison"
+     class="group relative flex flex-col items-start justify-between rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-fuchsia-200 hover:shadow-xl hover:shadow-fuchsia-100/50">
+    <div class="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-fuchsia-50 text-fuchsia-500 transition-colors group-hover:bg-fuchsia-500 group-hover:text-white">
+      <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" />
+        <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" />
+      </svg>
+    </div>
+    <h2 class="text-lg font-semibold text-slate-900 group-hover:text-fuchsia-700">Análise de Grupos</h2>
+    <p class="mt-2 text-sm leading-relaxed text-slate-500 group-hover:text-slate-600">
+      Contraste entre Coortes: HC vs PD (Parâmetros Tsallis).
+    </p>
+    <div class="mt-4 flex transform items-center text-sm font-medium text-fuchsia-600 opacity-0 transition-all group-hover:opacity-100">
+      Analisar <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+    </div>
+  </a>
+
+  <!--  Tsallis-optimization-protocol -->
+  <a href="/tsallis-optimization-protocol"
+     class="group relative flex flex-col items-start justify-between rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-pink-200 hover:shadow-xl hover:shadow-pink-100/50">
+    <div class="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-pink-50 text-pink-500 transition-colors group-hover:bg-pink-500 group-hover:text-white">
+      <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M7.5 6.75h9m-9 4.5h9m-9 4.5h4.5" />
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 3.75h15A2.25 2.25 0 0121.75 6v12A2.25 2.25 0 0119.5 20.25h-15A2.25 2.25 0 012.25 18V6A2.25 2.25 0 014.5 3.75z" />
+      </svg>
+    </div>
+    <h2 class="text-lg font-semibold text-slate-900 group-hover:text-pink-700">Otimização Tsallis</h2>
+    <p class="mt-2 text-sm leading-relaxed text-slate-500 group-hover:text-slate-600">
+      Protocolo de busca de "q" da Estatística de Tsallis.
+    </p>
+    <div class="mt-4 flex transform items-center text-sm font-medium text-pink-600 opacity-0 transition-all group-hover:opacity-100">
+      Otimizar <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+    </div>
+  </a>
+
+  <!-- Scientific Analysis -->
+  <a href="/scientific-analysis"
+     class="group relative flex flex-col items-start justify-between rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-orange-200 hover:shadow-xl hover:shadow-orange-100/50">
+    <div class="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-50 text-orange-500 transition-colors group-hover:bg-orange-500 group-hover:text-white">
+      <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+      </svg>
+    </div>
+    <h2 class="text-lg font-semibold text-slate-900 group-hover:text-orange-700">Exploração Científica</h2>
+    <p class="mt-2 text-sm leading-relaxed text-slate-500 group-hover:text-slate-600">
+      Inspeção pontual de espectros e características detalhadas.
+    </p>
+    <div class="mt-4 flex transform items-center text-sm font-medium text-orange-600 opacity-0 transition-all group-hover:opacity-100">
+      Investigar <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+    </div>
+  </a>
+
+  <!-- Dataset -->
+  <a href="/features/list"
+     class="group relative flex flex-col items-start justify-between rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-amber-200 hover:shadow-xl hover:shadow-amber-100/50">
+    <div class="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-50 text-amber-500 transition-colors group-hover:bg-amber-500 group-hover:text-white">
+      <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+      </svg>
+    </div>
+    <h2 class="text-lg font-semibold text-slate-900 group-hover:text-amber-700">Extração / CSV</h2>
+    <p class="mt-2 text-sm leading-relaxed text-slate-500 group-hover:text-slate-600">
+      Consolidação e download das matrizes de características.
+    </p>
+    <div class="mt-4 flex transform items-center text-sm font-medium text-amber-600 opacity-0 transition-all group-hover:opacity-100">
+      Baixar Dataset <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+    </div>
+  </a>
+
+  <!-- Pipeline -->
+  <a href="/pipeline"
+     class="group relative flex flex-col items-start justify-between rounded-3xl border border-slate-800 bg-slate-900 p-6 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-slate-700 hover:shadow-xl hover:shadow-slate-500/30">
+    <div class="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-800 text-slate-300 transition-colors group-hover:bg-indigo-500 group-hover:text-white">
+      <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+        <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    </div>
+    <h2 class="text-lg font-semibold text-white">Pipeline de Extração</h2>
+    <p class="mt-2 text-sm leading-relaxed text-slate-400">
+      Monitoramento em tempo real do processamento de base.
+    </p>
+    <div class="mt-4 flex transform items-center text-sm font-medium text-indigo-400 opacity-0 transition-all group-hover:opacity-100">
+      Executar <svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+    </div>
+  </a>
+</div>
+
+<!-- Secao Extra Sub-grid -->
+<div class="mt-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 border-t border-slate-200/60 pt-12">
+  
+  <!-- Códigos -->
+  <a href="/codes" class="group flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5 transition-all hover:bg-slate-50 shadow-sm hover:shadow-md hover:border-indigo-100">
+    <div class="flex items-center gap-4">
+      <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition-colors group-hover:bg-indigo-100 group-hover:text-indigo-600">
+        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" /></svg>
+      </div>
       <div>
-          <div class="rounded-2xl bg-white p-6 shadow-sm">
-            <h1 class="text-2xl font-semibold">Voice Features - Pre-proccess and Features Extrator</h1>
-            <p class="mt-2 text-slate-600">
-              Voice Analisys and Features Extraction Application for PD Classification with ML and Deep Learning
-            </p>
-          </div>
+        <h3 class="font-semibold text-slate-900 group-hover:text-indigo-700">Scripts & Códigos</h3>
+        <p class="text-xs text-slate-500">Módulos Python do núcleo</p>
       </div>
     </div>
+    <svg class="h-4 w-4 text-slate-300 group-hover:text-indigo-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+  </a>
 
-    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-
-      <!-- Parâmetros -->
-      <a href="/params/view"
-         class="group rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-sm">
-        <div class="flex flex-col items-center text-center">
-          <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9" fill="none" viewBox="0 0 24 24"
-              stroke="currentColor" stroke-width="1.8">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M10.5 6h3m-7.5 6h12m-9 6h6M7.5 3.75h9A2.25 2.25 0 0118.75 6v12A2.25 2.25 0 0116.5 20.25h-9A2.25 2.25 0 015.25 18V6A2.25 2.25 0 017.5 3.75z" />
-            </svg>
-          </div>
-          <h2 class="text-lg font-semibold text-slate-900 group-hover:text-blue-700">Parâmetros</h2>
-          <p class="mt-2 text-sm leading-6 text-slate-600">
-            Visualização dos parâmetros técnicos e caminhos usados na aplicação.
-          </p>
-        </div>
-      </a>
-      
-
-      <!-- Áudios Raw -->
-      <a href="/audio-raw"
-         class="group rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-sm">
-        <div class="flex flex-col items-center text-center">
-          <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9" fill="none" viewBox="0 0 24 24"
-              stroke="currentColor" stroke-width="1.8">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M9 19V6l10-2.25v13" />
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M9 17a2.25 2.25 0 11-4.5 0A2.25 2.25 0 019 17zm10-2.25a2.25 2.25 0 11-4.5 0A2.25 2.25 0 0119 14.75z" />
-            </svg>
-          </div>
-          <h2 class="text-lg font-semibold text-slate-900 group-hover:text-blue-700">Áudios Raw</h2>
-          <p class="mt-2 text-sm leading-6 text-slate-600">
-            Listagem, reprodução e inspeção dos arquivos de áudio brutos.
-          </p>
-        </div>
-      </a>
-
-      <!-- Curadoria de Áudio -->
-      <a href="/audio-curation"
-         class="group rounded-2xl border border-slate-200 bg-emerald-50/10 p-6 transition hover:border-emerald-300 hover:bg-emerald-50/50 hover:shadow-sm">
-        <div class="flex flex-col items-center text-center">
-          <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-emerald-100/50 text-emerald-600">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </div>
-          <h2 class="text-lg font-semibold text-slate-900 group-hover:text-emerald-700">Curadoria de Áudio</h2>
-          <p class="mt-2 text-sm leading-6 text-slate-600">
-            Limpeza da lixeira de áudios (Raw) e reconstrução otimizada do manifest demográfico.
-          </p>
-        </div>
-      </a>
-
-      <!-- Áudios Processados -->
-      <a href="/audio-processed"
-         class="group rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-sm">
-        <div class="flex flex-col items-center text-center">
-          <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9" fill="none" viewBox="0 0 24 24"
-              stroke="currentColor" stroke-width="1.8">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M4.5 5.25h15A2.25 2.25 0 0121.75 7.5v9A2.25 2.25 0 0119.5 18.75h-15A2.25 2.25 0 012.25 16.5v-9A2.25 2.25 0 014.5 5.25z" />
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M8.25 9.75l7.5 2.25-7.5 2.25v-4.5z" />
-            </svg>
-          </div>
-          <h2 class="text-lg font-semibold text-slate-900 group-hover:text-blue-700">Áudios Processados</h2>
-          <p class="mt-2 text-sm leading-6 text-slate-600">
-            Visualização dos áudios pré-processados e execução da extração de features.
-          </p>
-        </div>
-      </a>
-     
-      <!-- Compare -->
-      <a href="/compare"
-         class="group rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-sm">
-        <div class="flex flex-col items-center text-center">
-          <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9" fill="none" viewBox="0 0 24 24"
-              stroke="currentColor" stroke-width="1.8">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M4.5 5.25h15A2.25 2.25 0 0121.75 7.5v9A2.25 2.25 0 0119.5 18.75h-15A2.25 2.25 0 012.25 16.5v-9A2.25 2.25 0 014.5 5.25z" />
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M8.25 9.75l7.5 2.25-7.5 2.25v-4.5z" />
-            </svg>
-          </div>
-          <h2 class="text-lg font-semibold text-slate-900 group-hover:text-blue-700">Comparação</h2>
-          <p class="mt-2 text-sm leading-6 text-slate-600">
-            Comparação de dos áudios pré-processados com o raw.
-          </p>
-        </div>
-      </a>
-
-
-      
-      <!--  Tsallis-optimization-protocol -->
-      <a href="/tsallis-optimization-protocol"
-         class="group rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-sm">
-        <div class="flex flex-col items-center text-center">
-          <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9" fill="none" viewBox="0 0 24 24"
-              stroke="currentColor" stroke-width="1.8">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M7.5 6.75h9m-9 4.5h9m-9 4.5h4.5" />
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M4.5 3.75h15A2.25 2.25 0 0121.75 6v12A2.25 2.25 0 0119.5 20.25h-15A2.25 2.25 0 012.25 18V6A2.25 2.25 0 014.5 3.75z" />
-            </svg>
-          </div>
-          <h2 class="text-lg font-semibold text-slate-900 group-hover:text-blue-700">Tsallis Optimization</h2>
-          <p class="mt-2 text-sm leading-6 text-slate-600">
-            Tsallis q optimization protocol
-          </p>
-        </div>
-      </a>
-
-      <!-- Scientific Analysis -->
-      <a href="/scientific-analysis"
-         class="group rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-sm">
-        <div class="flex flex-col items-center text-center">
-          <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9" fill="none" viewBox="0 0 24 24"
-              stroke="currentColor" stroke-width="1.8">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M7.5 6.75h9m-9 4.5h9m-9 4.5h4.5" />
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M4.5 3.75h15A2.25 2.25 0 0121.75 6v12A2.25 2.25 0 0119.5 20.25h-15A2.25 2.25 0 012.25 18V6A2.25 2.25 0 014.5 3.75z" />
-            </svg>
-          </div>
-          <h2 class="text-lg font-semibold text-slate-900 group-hover:text-blue-700">Análise Científica</h2>
-          <p class="mt-2 text-sm leading-6 text-slate-600">
-            Analise cientifica dos arquivos de audio e features extraidas.
-          </p>
-        </div>
-      </a>
-      <!-- Group Comparison -->
-      <a href="/group-comparison"
-         class="group rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-sm">
-        <div class="flex flex-col items-center text-center">
-          <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9" fill="none" viewBox="0 0 24 24"
-              stroke="currentColor" stroke-width="1.8">
-              <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 6a7.5 7.5 0 107.5 7.5h-7.5V6z" />
-              <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 10.5H21A7.5 7.5 0 0013.5 3v7.5z" />
-            </svg>
-          </div>
-          <h2 class="text-lg font-semibold text-slate-900 group-hover:text-blue-700">Group Comparison</h2>
-          <p class="mt-2 text-sm leading-6 text-slate-600">
-            Análise e comparação por grupos dos parâmetros extraídos (q-Gaussian e Extensividade).
-          </p>
-        </div>
-      </a>
-
-      <!-- Dataset -->
-      <a href="/features/list"
-         class="group rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-sm">
-        <div class="flex flex-col items-center text-center">
-          <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9" fill="none" viewBox="0 0 24 24"
-              stroke="currentColor" stroke-width="1.8">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M7.5 6.75h9m-9 4.5h9m-9 4.5h4.5" />
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M4.5 3.75h15A2.25 2.25 0 0121.75 6v12A2.25 2.25 0 0119.5 20.25h-15A2.25 2.25 0 012.25 18V6A2.25 2.25 0 014.5 3.75z" />
-            </svg>
-          </div>
-          <h2 class="text-lg font-semibold text-slate-900 group-hover:text-blue-700">Dataset</h2>
-          <p class="mt-2 text-sm leading-6 text-slate-600">
-            Exploração e download dos datasets com a features extraídas.
-          </p>
-        </div>
-      </a>
-
-
-      <!-- Códigos -->
-      <a href="/codes"
-         class="group rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-sm">
-        <div class="flex flex-col items-center text-center">
-          <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9" fill="none" viewBox="0 0 24 24"
-              stroke="currentColor" stroke-width="1.8">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M17.25 6.75L21 12l-3.75 5.25M6.75 6.75L3 12l3.75 5.25M14.25 4.5L9.75 19.5" />
-            </svg>
-          </div>
-          <h2 class="text-lg font-semibold text-slate-900 group-hover:text-blue-700">Códigos</h2>
-          <p class="mt-2 text-sm leading-6 text-slate-600">
-            Acesso aos módulos, scripts e componentes usados nos pipelines da aplicação.
-          </p>
-        </div>
-      </a>
-
-      <!-- Swagger -->
-      <a href="/api/swagger-ui"
-         class="group rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-sm">
-        <div class="flex flex-col items-center text-center">
-          <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9" fill="none" viewBox="0 0 24 24"
-              stroke="currentColor" stroke-width="1.8">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M6.75 3.75h7.5l3 3v13.5H6.75A2.25 2.25 0 014.5 18V6A2.25 2.25 0 016.75 3.75z" />
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M14.25 3.75V7.5h3.75" />
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M8.25 11.25h7.5M8.25 15h7.5" />
-            </svg>
-          </div>
-          <h2 class="text-lg font-semibold text-slate-900 group-hover:text-blue-700">Swagger</h2>
-          <p class="mt-2 text-sm leading-6 text-slate-600">
-            Documentação e teste dos endpoints REST expostos pela aplicação.
-          </p>
-        </div>
-      </a>
-
-
-      <!-- Pipeline -->
-      <a href="/pipeline"
-         class="group rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-sm">
-        <div class="flex flex-col items-center text-center">
-          <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9" fill="none" viewBox="0 0 24 24"
-              stroke="currentColor" stroke-width="1.8">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M3.75 6.75h16.5M3.75 12h10.5m-10.5 5.25h16.5" />
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M17.25 10.5l3 1.5-3 1.5v-3z" />
-            </svg>
-          </div>
-          <h2 class="text-lg font-semibold text-slate-900 group-hover:text-blue-700">Pipeline</h2>
-          <p class="mt-2 text-sm leading-6 text-slate-600">
-            Execução e monitoramento em tempo real dos pipelines com logs via SSE.
-          </p>
-        </div>
-      </a>
-
-      <!-- Swagger -->
-      <a href="https://github.com/andviana/voice_features_application.git"
-         class="group rounded-2xl border border-slate-200 bg-white p-6 transition hover:border-blue-300 hover:bg-blue-50/40 hover:shadow-sm" target="_blank">
-        <div class="flex flex-col items-center text-center">
-          <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-blue-50 text-blue-600">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-9 w-9" fill="none" viewBox="0 0 24 24"
-              stroke="currentColor" stroke-width="1.8">
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M6.75 3.75h7.5l3 3v13.5H6.75A2.25 2.25 0 014.5 18V6A2.25 2.25 0 016.75 3.75z" />
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M14.25 3.75V7.5h3.75" />
-              <path stroke-linecap="round" stroke-linejoin="round"
-                d="M8.25 11.25h7.5M8.25 15h7.5" />
-            </svg>
-          </div>
-          <h2 class="text-lg font-semibold text-slate-900 group-hover:text-blue-700">Repositório</h2>
-          <p class="mt-2 text-sm leading-6 text-slate-600">
-            Repositório no GitHub da aplicação.
-          </p>
-        </div>
-      </a>
-    </div>
-
-      <div class="mt-6 flex gap-3">
-        <a href="/health"
-          class="rounded-xl border px-4 py-2 text-sm font-medium hover:bg-slate-50">
-          Healthcheck
-        </a>
+  <!-- Swagger -->
+  <a href="/api/swagger-ui" class="group flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5 transition-all hover:bg-slate-50 shadow-sm hover:shadow-md hover:border-emerald-100">
+    <div class="flex items-center gap-4">
+      <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition-colors group-hover:bg-emerald-100 group-hover:text-emerald-600">
+        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
       </div>
-  </div>
+      <div>
+        <h3 class="font-semibold text-slate-900 group-hover:text-emerald-700">API & Swagger</h3>
+        <p class="text-xs text-slate-500">Documentação RESTful</p>
+      </div>
+    </div>
+    <svg class="h-4 w-4 text-slate-300 group-hover:text-emerald-400 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+  </a>
+  
+  <!-- GitHub -->
+  <a href="https://github.com/andviana/voice_features_application.git" target="_blank" class="group flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-5 transition-all hover:bg-slate-50 shadow-sm hover:shadow-md hover:border-slate-300">
+    <div class="flex items-center gap-4">
+      <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition-colors group-hover:bg-slate-800 group-hover:text-white">
+        <svg class="h-6 w-6" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clip-rule="evenodd" /></svg>
+      </div>
+      <div>
+        <h3 class="font-semibold text-slate-900 group-hover:text-slate-800">Código Fonte</h3>
+        <p class="text-xs text-slate-500">Repositório Oficial do Github</p>
+      </div>
+    </div>
+    <svg class="h-4 w-4 text-slate-300 group-hover:text-slate-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+  </a>
+</div>
 {% endblock %}
