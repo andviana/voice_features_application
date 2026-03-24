@@ -11,6 +11,7 @@ class PathUtils:
     DATA_DIR_NAME = "data"
     AUDIO_RAW_DIR_NAME = "audio_raw"
     AUDIO_PROCESSED_DIR_NAME = "audio_processed"
+    AUDIO_REJECTED_DIR_NAME = "audio_rejected"
     FEATURES_DIR_NAME = "features"
     METADATA_DIR_NAME = "metadata"
     
@@ -45,6 +46,11 @@ class PathUtils:
     def processed_root() -> Path:
         """Retorna o caminho absoluto para o diretório de áudios processados."""
         return (PathUtils.data_root() / PathUtils.AUDIO_PROCESSED_DIR_NAME).resolve()
+
+    @staticmethod
+    def rejected_root() -> Path:
+        """Retorna o caminho absoluto para o diretório de áudios rejeitados/lixeira."""
+        return (PathUtils.data_root() / PathUtils.AUDIO_REJECTED_DIR_NAME).resolve()
 
     @staticmethod
     def features_root() -> Path:

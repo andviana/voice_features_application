@@ -1,10 +1,8 @@
 participant_id,recording_id,group,age,sex,wav_path,sampling_rate
 064F,AH_064F_7AB034C9-72E4-438B-A9B3-AD7FDA1596C5,HC,69.0,M,/Users/anderson/workspace/ppgee/voice_analisys_extract_features/data/raw_audios/HC_AH/AH_064F_7AB034C9-72E4-438B-A9B3-AD7FDA1596C5.wav,48000
 114S,AH_114S_A89F3548-0B61-4770-B800-2E26AB3908B6,HC,43.0,M,/Users/anderson/workspace/ppgee/voice_analisys_extract_features/data/raw_audios/HC_AH/AH_114S_A89F3548-0B61-4770-B800-2E26AB3908B6.wav,48000
-121A,AH_121A_BD5BA248-E807-4CB9-8B53-47E7FFE5F8E2,HC,18.0,F,/Users/anderson/workspace/ppgee/voice_analisys_extract_features/data/raw_audios/HC_AH/AH_121A_BD5BA248-E807-4CB9-8B53-47E7FFE5F8E2.wav,48000
 123G,AH_123G_559F0706-2238-447C-BA39-DB5933BA619D,HC,28.0,M,/Users/anderson/workspace/ppgee/voice_analisys_extract_features/data/raw_audios/HC_AH/AH_123G_559F0706-2238-447C-BA39-DB5933BA619D.wav,48000
 195B,AH_195B_39DA6A45-F4CC-492A-80D4-FB79049ACC22,HC,68.0,M,/Users/anderson/workspace/ppgee/voice_analisys_extract_features/data/raw_audios/HC_AH/AH_195B_39DA6A45-F4CC-492A-80D4-FB79049ACC22.wav,48000
-197T,AH_197T_7552379A-2310-46E1-9466-9D8045C990B8,HC,24.0,M,/Users/anderson/workspace/ppgee/voice_analisys_extract_features/data/raw_audios/HC_AH/AH_197T_7552379A-2310-46E1-9466-9D8045C990B8.wav,48000
 222K,AH_222K_FC9D2763-1836-460B-954F-37F23D6CD81D,HC,78.0,M,/Users/anderson/workspace/ppgee/voice_analisys_extract_features/data/raw_audios/HC_AH/AH_222K_FC9D2763-1836-460B-954F-37F23D6CD81D.wav,48000
 264Z,AH_264Z_593C20CD-0A54-4177-B031-26EE147080A3,HC,72.0,F,/Users/anderson/workspace/ppgee/voice_analisys_extract_features/data/raw_audios/HC_AH/AH_264Z_593C20CD-0A54-4177-B031-26EE147080A3.wav,48000
 292J,AH_292J_201CB911-31C1-4CD0-BD73-4FBA4A16C21F,HC,57.0,F,/Users/anderson/workspace/ppgee/voice_analisys_extract_features/data/raw_audios/HC_AH/AH_292J_201CB911-31C1-4CD0-BD73-4FBA4A16C21F.wav,48000
@@ -35,9 +33,7 @@ participant_id,recording_id,group,age,sex,wav_path,sampling_rate
 777G,AH_777G_4C8ACC89-7FE2-4174-AE3A-B21B39A0C869,HC,71.0,F,/Users/anderson/workspace/ppgee/voice_analisys_extract_features/data/raw_audios/HC_AH/AH_777G_4C8ACC89-7FE2-4174-AE3A-B21B39A0C869.wav,48000
 777R,AH_777R_A36CF7FA-37FD-483E-98FE-040942B1DF49,HC,56.0,F,/Users/anderson/workspace/ppgee/voice_analisys_extract_features/data/raw_audios/HC_AH/AH_777R_A36CF7FA-37FD-483E-98FE-040942B1DF49.wav,48000
 789Y,AH_789Y_20CB672C-5F66-425E-8707-BE5B7FF807E2,HC,54.0,F,/Users/anderson/workspace/ppgee/voice_analisys_extract_features/data/raw_audios/HC_AH/AH_789Y_20CB672C-5F66-425E-8707-BE5B7FF807E2.wav,48000
-803T,AH_803T_66094C40-AE64-4AD3-AA97-B052C69DA3EF,HC,23.0,F,/Users/anderson/workspace/ppgee/voice_analisys_extract_features/data/raw_audios/HC_AH/AH_803T_66094C40-AE64-4AD3-AA97-B052C69DA3EF.wav,48000
 821C,AH_821C_8F9D5EF0-18B2-4967-B36D-82E014792BC3,HC,35.0,F,/Users/anderson/workspace/ppgee/voice_analisys_extract_features/data/raw_audios/HC_AH/AH_821C_8F9D5EF0-18B2-4967-B36D-82E014792BC3.wav,48000
-888A,AH_888A_7F1444B0-B12C-4B55-AF2A-463395DCAF3C,HC,61.0,M,/Users/anderson/workspace/ppgee/voice_analisys_extract_features/data/raw_audios/HC_AH/AH_888A_7F1444B0-B12C-4B55-AF2A-463395DCAF3C.wav,48000
 904H,AH_904H_85B22FC1-BA09-4A17-A374-B00B2445CD27,HC,36.0,F,/Users/anderson/workspace/ppgee/voice_analisys_extract_features/data/raw_audios/HC_AH/AH_904H_85B22FC1-BA09-4A17-A374-B00B2445CD27.wav,48000
 942A,AH_942A_3F7867F3-1AE2-4BE6-B5EC-AC3157D310CF,HC,79.0,M,/Users/anderson/workspace/ppgee/voice_analisys_extract_features/data/raw_audios/HC_AH/AH_942A_3F7867F3-1AE2-4BE6-B5EC-AC3157D310CF.wav,48000
 545616858-3A749CBC-3FEB-4D35-820E-E45C3E5B9B6A,AH_545616858-3A749CBC-3FEB-4D35-820E-E45C3E5B9B6A,PD,64.46,M,/Users/anderson/workspace/ppgee/voice_analisys_extract_features/data/raw_audios/PD_AH/AH_545616858-3A749CBC-3FEB-4D35-820E-E45C3E5B9B6A.wav,48000

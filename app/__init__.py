@@ -40,6 +40,7 @@ def create_app():
     from .blueprints.optimize_tsallis import bp as optimize_tsallis_bp
     from .blueprints.data_exploration import bp as data_exploration_bp
     from .blueprints.group_comparison import bp as group_comparison_bp
+    from .blueprints.audio_curation import bp as audio_curation_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(params_bp)
@@ -53,6 +54,7 @@ def create_app():
     app.register_blueprint(optimize_tsallis_bp)
     app.register_blueprint(data_exploration_bp)
     app.register_blueprint(group_comparison_bp)
+    app.register_blueprint(audio_curation_bp)
 
     # Blueprints API (Smorest)
     from .blueprints.api import params_api, pipeline_api
