@@ -1,0 +1,654 @@
+{% extends "base.html" %}
+
+{% block title %}Comparação por Grupos{% endblock %}
+
+{% block content %}
+<section class="space-y-6">
+  <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div class="border-b border-slate-100 bg-gradient-to-r from-cyan-50 via-white to-sky-50 px-6 py-6">
+      <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div>
+          <span
+            class="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-cyan-50 px-3 py-1 text-xs font-medium uppercase tracking-wide text-cyan-700">
+            <span class="h-2 w-2 rounded-full bg-cyan-500"></span>
+            Comparação estatística
+          </span>
+
+          <h1 class="mt-3 text-2xl font-semibold tracking-tight text-slate-900">
+            HC vs PD
+          </h1>
+
+          <p class="mt-3 max-w-3xl text-sm leading-6 text-slate-600">
+            Esta análise compara os grupos controle e Parkinson com base nos parâmetros
+            <span class="font-medium text-slate-800">q de Extensividade</span> e
+            <span class="font-medium text-slate-800">q de Ajuste Gaussiano</span>,
+            gerando gráfico comparativo e resumo estatístico consolidado.
+          </p>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="grid gap-4 px-6 py-5 md:grid-cols-3">
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <p class="text-sm font-semibold text-slate-800">1. Processamento individual</p>
+        <p class="mt-1 text-xs leading-5 text-slate-600">
+          Estimação dos parâmetros por arquivo de áudio.
+        </p>
+      </div>
+
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <p class="text-sm font-semibold text-slate-800">2. Comparação por grupo</p>
+        <p class="mt-1 text-xs leading-5 text-slate-600">
+          Agregação estatística separando HC e PD.
+        </p>
+      </div>
+
+      <div class="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <p class="text-sm font-semibold text-slate-800">3. Artefatos finais</p>
+        <p class="mt-1 text-xs leading-5 text-slate-600">
+          Geração de gráfico e tabelas de apoio para inspeção.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <h2 class="text-lg font-semibold text-slate-900">Executar análise por grupos</h2>
+        <p class="mt-1 text-sm text-slate-600">
+          Processa a base pública em 8kHz e atualiza o gráfico comparativo e o resumo estatístico.
+        </p>
+      </div>
+
+      <button id="btn-run-comp" type="button"
+        class="inline-flex items-center justify-center gap-2 rounded-xl bg-cyan-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-cyan-700 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+          stroke-width="1.8">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12h15m-7.5-7.5 7.5 7.5-7.5 7.5" />
+        </svg>
+        Gerar análise por grupos
+      </button>
+    </div>
+
+    <div id="loader" class="mt-6 hidden rounded-xl border border-cyan-200 bg-cyan-50 p-5">
+      <div class="flex items-center gap-3">
+        <div class="h-5 w-5 animate-spin rounded-full border-2 border-cyan-600 border-t-transparent"></div>
+        <p class="text-sm font-medium text-cyan-800">
+          Processando sinais e gerando comparação estatística...
+        </p>
+      </div>
+
+      <div class="mt-4 h-2 overflow-hidden rounded-full bg-cyan-100">
+        <div class="h-full w-full animate-pulse rounded-full bg-gradient-to-r from-cyan-500 via-sky-500 to-cyan-500">
+        </div>
+      </div>
+    </div>
+
+    <div id="error-box" class="mt-6 hidden rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
+    </div>
+  </div>
+
+  <div id="results-content" class="{% if not results.has_results %}hidden{% endif %} space-y-6">
+    <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div class="border-b border-slate-100 px-6 py-4">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 class="text-lg font-semibold text-slate-900">Resumo estatístico por grupo</h3>
+            <p class="text-sm text-slate-600">
+              Médias, desvios e total de amostras por classe.
+            </p>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <a id="stats-view-link"
+              href="{{ url_for('optimize_tsallis.view_csv_table', filename=results.files.stats_csv) if results.has_results else '#' }}"
+              class="inline-flex items-center rounded-lg bg-cyan-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-cyan-700">
+              Ver tabela
+            </a>
+
+            <a id="stats-download-link"
+              href="{{ url_for('optimize_tsallis.download_opt_file', filename=results.files.stats_csv) if results.has_results else '#' }}"
+              class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
+              Download CSV
+            </a>
+
+            <a id="detailed-view-link"
+              href="{{ url_for('optimize_tsallis.view_csv_table', filename=results.files.detailed_csv) if results.has_results else '#' }}"
+              class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
+              Ver detalhado
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-slate-200 text-sm">
+            <thead class="bg-slate-50">
+              <tr id="summary-head-row">
+                {% for column in results.summary_columns %}
+                <th
+                  class="whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-700">
+                  {{ column }}
+                </th>
+                {% endfor %}
+              </tr>
+            </thead>
+
+            <tbody id="summary-body" class="divide-y divide-slate-100 bg-white">
+              {% for row in results.summary_records %}
+              <tr class="transition hover:bg-cyan-50/40">
+                {% for column in results.summary_columns %}
+                <td class="whitespace-nowrap px-4 py-3 text-slate-700">
+                  {{ row[column] }}
+                </td>
+                {% endfor %}
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+      <div class="border-b border-slate-100 px-6 py-4">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 class="text-lg font-semibold text-slate-900">Gráfico comparativo</h3>
+            <p class="text-sm text-slate-600">
+              Visualização da distribuição dos parâmetros estimados por grupo.
+            </p>
+          </div>
+
+          <div class="flex flex-wrap gap-2">
+            <a id="plot-download-link"
+              href="{{ url_for('optimize_tsallis.download_opt_file', filename=results.files.plot_image) if results.has_results else '#' }}"
+              class="inline-flex items-center rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100">
+              Abrir imagem
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="p-6">
+        <div class="overflow-hidden rounded-xl border border-slate-200 bg-slate-50 p-4">
+          <img id="comp-plot"
+            src="{% if results.has_results %}{{ url_for('optimize_tsallis.download_opt_file', filename=results.files.plot_image) }}{% endif %}"
+            class="mx-auto w-full max-w-5xl rounded-lg" alt="Gráfico de comparação entre HC e PD">
+        </div>
+      </div>
+
+      <!-- Secao de Dispersão 1D (Gaussian Fit) -->
+      <div class="px-6 pt-0">
+        <h3 class="mb-4 text-lg font-semibold text-slate-900 border-t border-slate-100 pt-6">1D Scatter: q de Ajuste
+          Gaussiano</h3>
+        <div class="overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
+          <div class="flex flex-col md:flex-row gap-4 items-center">
+            <div id="gaussian-fit-plot"
+              class="w-full md:w-3/4 overflow-hidden rounded-lg border border-slate-200 bg-white"></div>
+
+            <div class="w-full md:w-1/4 overflow-hidden rounded-lg border border-slate-200">
+              <table class="min-w-full divide-y divide-slate-200 text-sm text-center">
+                <thead class="bg-slate-50">
+                  <tr>
+                    <th class="px-4 py-2 font-semibold text-slate-700">Grupo</th>
+                    <th class="px-4 py-2 font-semibold text-slate-700">Valores &gt; 2.2</th>
+                    <th class="px-4 py-2 font-semibold text-slate-700">Valores &lt; 0.8</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 bg-white">
+                  <tr>
+                    <td class="px-4 py-2 font-medium text-slate-900 border-r">HC</td>
+                    <td id="hc-above" class="px-4 py-2 font-mono text-blue-700">0</td>
+                    <td id="hc-below" class="px-4 py-2 font-mono text-blue-700">0</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-2 font-medium text-slate-900 border-r">PD</td>
+                    <td id="pd-above" class="px-4 py-2 font-mono text-red-700">0</td>
+                    <td id="pd-below" class="px-4 py-2 font-mono text-red-700">0</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="mt-6 flex flex-col md:flex-row gap-4 items-center">
+            <!-- Novos Gráficos Separados (HC | PD) -->
+            <div class="w-full md:w-3/4 overflow-hidden rounded-lg border border-slate-200 bg-white">
+              <div id="gaussian-fit-subplots" class="w-full"></div>
+            </div>
+
+            <!-- Novo Gráfico Boxplot (HC vs PD) Gaussiano -->
+            <div class="w-full md:w-1/4 overflow-hidden rounded-lg border border-slate-200 bg-white">
+              <div id="gaussian-boxplot" class="w-full"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Secao de Dispersão 1D (Extensividade) -->
+      <div class="p-6 pt-0">
+        <h3 class="mb-4 text-lg font-semibold text-slate-900">1D Scatter: q de Extensividade</h3>
+        <div class="overflow-hidden rounded-xl border border-slate-200 bg-white p-4">
+          <div class="flex flex-col md:flex-row gap-4 items-center">
+            <div id="extensivity-plot"
+              class="w-full md:w-3/4 overflow-hidden rounded-lg border border-slate-200 bg-white"></div>
+
+            <div class="w-full md:w-1/4 overflow-hidden rounded-lg border border-slate-200">
+              <table class="min-w-full divide-y divide-slate-200 text-sm text-center">
+                <thead class="bg-slate-50">
+                  <tr>
+                    <th class="px-4 py-2 font-semibold text-slate-700">Grupo</th>
+                    <th class="px-4 py-2 font-semibold text-slate-700">Valores &gt; 2.2</th>
+                    <th class="px-4 py-2 font-semibold text-slate-700">Valores &lt; 0.8</th>
+                  </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100 bg-white">
+                  <tr>
+                    <td class="px-4 py-2 font-medium text-slate-900 border-r">HC</td>
+                    <td id="ext-hc-above" class="px-4 py-2 font-mono text-blue-700">0</td>
+                    <td id="ext-hc-below" class="px-4 py-2 font-mono text-blue-700">0</td>
+                  </tr>
+                  <tr>
+                    <td class="px-4 py-2 font-medium text-slate-900 border-r">PD</td>
+                    <td id="ext-pd-above" class="px-4 py-2 font-mono text-red-700">0</td>
+                    <td id="ext-pd-below" class="px-4 py-2 font-mono text-red-700">0</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="mt-6 flex flex-col md:flex-row gap-4 items-center">
+            <!-- Novos Gráficos Separados (HC | PD) extensividade -->
+            <div class="w-full md:w-3/4 overflow-hidden rounded-lg border border-slate-200 bg-white">
+              <div id="extensivity-subplots" class="w-full"></div>
+            </div>
+
+            <!-- Novo Gráfico Boxplot (HC vs PD) Extensividade -->
+            <div class="w-full md:w-1/4 overflow-hidden rounded-lg border border-slate-200 bg-white">
+              <div id="extensivity-boxplot" class="w-full"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script>
+  const btnRunComp = document.getElementById('btn-run-comp');
+  const loader = document.getElementById('loader');
+  const resultsContent = document.getElementById('results-content');
+  const errorBox = document.getElementById('error-box');
+  const compPlot = document.getElementById('comp-plot');
+  const plotDownloadLink = document.getElementById('plot-download-link');
+  const statsViewLink = document.getElementById('stats-view-link');
+  const statsDownloadLink = document.getElementById('stats-download-link');
+  const detailedViewLink = document.getElementById('detailed-view-link');
+  const summaryHeadRow = document.getElementById('summary-head-row');
+  const summaryBody = document.getElementById('summary-body');
+
+  function renderSummaryTable(columns, records) {
+    summaryHeadRow.innerHTML = '';
+    summaryBody.innerHTML = '';
+
+    columns.forEach((column) => {
+      const th = document.createElement('th');
+      th.className = 'whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-700';
+      th.textContent = column;
+      summaryHeadRow.appendChild(th);
+    });
+
+    records.forEach((row) => {
+      const tr = document.createElement('tr');
+      tr.className = 'transition hover:bg-cyan-50/40';
+
+      columns.forEach((column) => {
+        const td = document.createElement('td');
+        td.className = 'whitespace-nowrap px-4 py-3 text-slate-700';
+        td.textContent = row[column] ?? '';
+        tr.appendChild(td);
+      });
+
+      summaryBody.appendChild(tr);
+    });
+  }
+
+  function renderGaussianFitPlot(records) {
+    if (!records || records.length === 0) return;
+
+    const hc_x = records.filter(r => r.Grupo === 'HC').map(r => Number(r.q_Gaussian_Fit));
+    const pd_x = records.filter(r => r.Grupo === 'PD').map(r => Number(r.q_Gaussian_Fit));
+
+    const traceHC = {
+      x: hc_x,
+      y: Array(hc_x.length).fill(0),
+      mode: 'markers',
+      type: 'scatter',
+      name: 'HC (Azul)',
+      marker: { color: 'blue', opacity: 0.5, size: 12, line: { color: 'darkblue', width: 1 } },
+      text: records.filter(r => r.Grupo === 'HC').map(r => r.Arquivo),
+      hovertemplate: '<b>%{text}</b><br>Gaussian Fit: %{x}<extra></extra>'
+    };
+
+    const tracePD = {
+      x: pd_x,
+      y: Array(pd_x.length).fill(0),
+      mode: 'markers',
+      type: 'scatter',
+      name: 'PD (Vermelho)',
+      marker: { color: 'red', opacity: 0.5, size: 12, line: { color: 'darkred', width: 1 } },
+      text: records.filter(r => r.Grupo === 'PD').map(r => r.Arquivo),
+      hovertemplate: '<b>%{text}</b><br>Gaussian Fit: %{x}<extra></extra>'
+    };
+
+    const hc_mean = hc_x.reduce((a, b) => a + b, 0) / hc_x.length;
+    const pd_mean = pd_x.reduce((a, b) => a + b, 0) / pd_x.length;
+
+    const layout = {
+      title: 'Sobreposição de Ajuste Gaussiano (HC vs PD)',
+      xaxis: { range: [0, 3] },
+      yaxis: { visible: false, range: [-1, 1], zeroline: false },
+      height: 180,
+      margin: { l: 20, r: 20, t: 40, b: 60 },
+      hovermode: 'closest',
+      plot_bgcolor: "white",
+      paper_bgcolor: "white",
+      showlegend: true,
+      legend: { orientation: 'h', y: -0.3, xanchor: 'center', x: 0.5 },
+      shapes: [
+        { type: 'line', x0: 0, x1: 3, y0: 0, y1: 0, line: { color: '#cbd5e1', width: 2 } },
+        {
+          type: 'line',
+          x0: hc_mean,
+          x1: hc_mean,
+          y0: -0.5,
+          y1: 0.5,
+          line: { color: 'darkblue', dash: 'dot', width: 2 }
+        },
+        {
+          type: 'line',
+          x0: pd_mean,
+          x1: pd_mean,
+          y0: -0.5,
+          y1: 0.5,
+          line: { color: 'darkred', dash: 'dot', width: 2 }
+        }
+      ],
+      annotations: [
+        {
+          x: hc_mean,
+          y: 0.6,
+          xref: 'x',
+          yref: 'y',
+          text: `${hc_mean.toFixed(3)} (HC)`,
+          showarrow: false,
+          font: { color: 'darkblue', size: 10 }
+        },
+        {
+          x: pd_mean,
+          y: -0.6,
+          xref: 'x',
+          yref: 'y',
+          text: `${pd_mean.toFixed(3)} (PD)`,
+          showarrow: false,
+          font: { color: 'darkred', size: 10 }
+        }
+      ]
+    };
+
+    Plotly.newPlot('gaussian-fit-plot', [traceHC, tracePD], layout, { responsive: true, displayModeBar: false });
+
+    // === Plot Subplots (HC cima | PD baixo) ===
+    const traceHCSplit = Object.assign({}, traceHC, { xaxis: 'x', yaxis: 'y2', showlegend: false });
+    const tracePDSplit = Object.assign({}, tracePD, { xaxis: 'x', yaxis: 'y', showlegend: false });
+
+    const layoutSplitGas = {
+      title: 'Ajuste Gaussiano por Grupo',
+      xaxis: { range: [0, 3] },
+      yaxis: { visible: false, range: [-1, 1], zeroline: false, domain: [0, 0.45] },
+      yaxis2: { visible: false, range: [-1, 1], zeroline: false, domain: [0.55, 1] },
+      height: 250,
+      margin: { l: 20, r: 20, t: 40, b: 60 },
+      hovermode: 'closest',
+      plot_bgcolor: "white",
+      paper_bgcolor: "white",
+      showlegend: true,
+      legend: { orientation: 'h', y: -0.3, xanchor: 'center', x: 0.5 },
+      shapes: [
+        { type: 'line', x0: 0, x1: 3, y0: 0, y1: 0, line: { color: '#cbd5e1', width: 2 }, xref: 'x', yref: 'y2' },
+        { type: 'line', x0: hc_mean, x1: hc_mean, y0: -0.5, y1: 0.5, line: { color: 'darkblue', dash: 'dot', width: 2 }, xref: 'x', yref: 'y2' },
+        { type: 'line', x0: 0.8, x1: 0.8, y0: -0.5, y1: 0.5, line: { color: 'gray', dash: 'dash', width: 1 }, xref: 'x', yref: 'y2' },
+        { type: 'line', x0: 2.2, x1: 2.2, y0: -0.5, y1: 0.5, line: { color: 'gray', dash: 'dash', width: 1 }, xref: 'x', yref: 'y2' },
+
+        { type: 'line', x0: 0, x1: 3, y0: 0, y1: 0, line: { color: '#cbd5e1', width: 2 }, xref: 'x', yref: 'y' },
+        { type: 'line', x0: pd_mean, x1: pd_mean, y0: -0.5, y1: 0.5, line: { color: 'darkred', dash: 'dot', width: 2 }, xref: 'x', yref: 'y' },
+        { type: 'line', x0: 0.8, x1: 0.8, y0: -0.5, y1: 0.5, line: { color: 'gray', dash: 'dash', width: 1 }, xref: 'x', yref: 'y' },
+        { type: 'line', x0: 2.2, x1: 2.2, y0: -0.5, y1: 0.5, line: { color: 'gray', dash: 'dash', width: 1 }, xref: 'x', yref: 'y' }
+      ],
+      annotations: [
+        { x: hc_mean, y: 0.65, xref: 'x', yref: 'y2', text: `${hc_mean.toFixed(3)} (HC)`, showarrow: false, font: { color: 'darkblue', size: 10 } },
+        { x: 0.8, y: -0.65, xref: 'x', yref: 'y2', text: `0.8`, showarrow: false, font: { color: 'gray', size: 10 } },
+        { x: 2.2, y: -0.65, xref: 'x', yref: 'y2', text: `2.2`, showarrow: false, font: { color: 'gray', size: 10 } },
+
+        { x: pd_mean, y: 0.65, xref: 'x', yref: 'y', text: `${pd_mean.toFixed(3)} (PD)`, showarrow: false, font: { color: 'darkred', size: 10 } },
+        { x: 0.8, y: -0.65, xref: 'x', yref: 'y', text: `0.8`, showarrow: false, font: { color: 'gray', size: 10 } },
+        { x: 2.2, y: -0.65, xref: 'x', yref: 'y', text: `2.2`, showarrow: false, font: { color: 'gray', size: 10 } }
+      ]
+    };
+
+    // Custom dummy traces for legend
+    const legendHC = { x: [null], y: [null], name: 'HC (Azul)', marker: { color: 'blue' }, showlegend: true };
+    const legendPD = { x: [null], y: [null], name: 'PD (Vermelho)', marker: { color: 'red' }, showlegend: true };
+
+    Plotly.newPlot('gaussian-fit-subplots', [traceHCSplit, tracePDSplit, legendHC, legendPD], layoutSplitGas, { responsive: true, displayModeBar: false });
+
+    // === Boxplot Gaussiano (HC vs PD) ===
+    const boxLayoutGauss = {
+      yaxis: { range: [0, 3] },
+      boxmode: 'group',
+      height: 250,
+      margin: { l: 30, r: 10, t: 20, b: 40 },
+      plot_bgcolor: "white",
+      paper_bgcolor: "white",
+      showlegend: false
+    };
+    const boxTraceHCGauss = { y: hc_x, type: 'box', name: 'HC', marker: { color: 'blue' } };
+    const boxTracePDGauss = { y: pd_x, type: 'box', name: 'PD', marker: { color: 'red' } };
+    Plotly.newPlot('gaussian-boxplot', [boxTraceHCGauss, boxTracePDGauss], boxLayoutGauss, { responsive: true, displayModeBar: false });
+
+    // Atualização da Tabela 2x2
+    const hc_above = hc_x.filter(v => v > 2.2).length;
+    const hc_below = hc_x.filter(v => v < 0.8).length;
+    const pd_above = pd_x.filter(v => v > 2.2).length;
+    const pd_below = pd_x.filter(v => v < 0.8).length;
+
+    document.getElementById('hc-above').textContent = hc_above;
+    document.getElementById('hc-below').textContent = hc_below;
+    document.getElementById('pd-above').textContent = pd_above;
+    document.getElementById('pd-below').textContent = pd_below;
+  }
+
+  function renderExtensivityPlot(records) {
+    if (!records || records.length === 0) return;
+
+    const hc_x = records.filter(r => r.Grupo === 'HC').map(r => Number(r.q_Extensividade));
+    const pd_x = records.filter(r => r.Grupo === 'PD').map(r => Number(r.q_Extensividade));
+
+    const traceHC = {
+      x: hc_x,
+      y: Array(hc_x.length).fill(0),
+      mode: 'markers',
+      type: 'scatter',
+      name: 'HC (Azul)',
+      marker: { color: 'blue', opacity: 0.5, size: 12, line: { color: 'darkblue', width: 1 } },
+      text: records.filter(r => r.Grupo === 'HC').map(r => r.Arquivo),
+      hovertemplate: '<b>%{text}</b><br>Extensividade: %{x}<extra></extra>'
+    };
+
+    const tracePD = {
+      x: pd_x,
+      y: Array(pd_x.length).fill(0),
+      mode: 'markers',
+      type: 'scatter',
+      name: 'PD (Vermelho)',
+      marker: { color: 'red', opacity: 0.5, size: 12, line: { color: 'darkred', width: 1 } },
+      text: records.filter(r => r.Grupo === 'PD').map(r => r.Arquivo),
+      hovertemplate: '<b>%{text}</b><br>Extensividade: %{x}<extra></extra>'
+    };
+
+    const hc_mean = hc_x.reduce((a, b) => a + b, 0) / hc_x.length;
+    const pd_mean = pd_x.reduce((a, b) => a + b, 0) / pd_x.length;
+
+    const layout = {
+      title: 'Sobreposição de q_Extensividade (HC vs PD)',
+      xaxis: { range: [0, 3] },
+      yaxis: { visible: false, range: [-1, 1], zeroline: false },
+      height: 180,
+      margin: { l: 20, r: 20, t: 40, b: 60 },
+      hovermode: 'closest',
+      plot_bgcolor: "white",
+      paper_bgcolor: "white",
+      showlegend: true,
+      legend: { orientation: 'h', y: -0.3, xanchor: 'center', x: 0.5 },
+      shapes: [
+        { type: 'line', x0: 0, x1: 3, y0: 0, y1: 0, line: { color: '#cbd5e1', width: 2 } },
+        { type: 'line', x0: hc_mean, x1: hc_mean, y0: -0.5, y1: 0.5, line: { color: 'darkblue', dash: 'dot', width: 2 } },
+        { type: 'line', x0: pd_mean, x1: pd_mean, y0: -0.5, y1: 0.5, line: { color: 'darkred', dash: 'dot', width: 2 } }
+      ],
+      annotations: [
+        { x: hc_mean, y: 0.6, xref: 'x', yref: 'y', text: `${hc_mean.toFixed(3)} (HC)`, showarrow: false, font: { color: 'darkblue', size: 10 } },
+        { x: pd_mean, y: -0.6, xref: 'x', yref: 'y', text: `${pd_mean.toFixed(3)} (PD)`, showarrow: false, font: { color: 'darkred', size: 10 } }
+      ]
+    };
+
+    Plotly.newPlot('extensivity-plot', [traceHC, tracePD], layout, { responsive: true, displayModeBar: false });
+
+    // === Plot Subplots (HC cima | PD baixo) ===
+    const traceHCExtSplit = Object.assign({}, traceHC, { xaxis: 'x', yaxis: 'y2', showlegend: false });
+    const tracePDExtSplit = Object.assign({}, tracePD, { xaxis: 'x', yaxis: 'y', showlegend: false });
+
+    const layoutSplitExt = {
+      title: 'Extensividade por Grupo',
+      xaxis: { range: [0, 3] },
+      yaxis: { visible: false, range: [-1, 1], zeroline: false, domain: [0, 0.45] },
+      yaxis2: { visible: false, range: [-1, 1], zeroline: false, domain: [0.55, 1] },
+      height: 250,
+      margin: { l: 20, r: 20, t: 40, b: 60 },
+      hovermode: 'closest',
+      plot_bgcolor: "white",
+      paper_bgcolor: "white",
+      showlegend: true,
+      legend: { orientation: 'h', y: -0.3, xanchor: 'center', x: 0.5 },
+      shapes: [
+        { type: 'line', x0: 0, x1: 3, y0: 0, y1: 0, line: { color: '#cbd5e1', width: 2 }, xref: 'x', yref: 'y2' },
+        { type: 'line', x0: hc_mean, x1: hc_mean, y0: -0.5, y1: 0.5, line: { color: 'darkblue', dash: 'dot', width: 2 }, xref: 'x', yref: 'y2' },
+        { type: 'line', x0: 0.8, x1: 0.8, y0: -0.5, y1: 0.5, line: { color: 'gray', dash: 'dash', width: 1 }, xref: 'x', yref: 'y2' },
+        { type: 'line', x0: 2.2, x1: 2.2, y0: -0.5, y1: 0.5, line: { color: 'gray', dash: 'dash', width: 1 }, xref: 'x', yref: 'y2' },
+
+        { type: 'line', x0: 0, x1: 3, y0: 0, y1: 0, line: { color: '#cbd5e1', width: 2 }, xref: 'x', yref: 'y' },
+        { type: 'line', x0: pd_mean, x1: pd_mean, y0: -0.5, y1: 0.5, line: { color: 'darkred', dash: 'dot', width: 2 }, xref: 'x', yref: 'y' },
+        { type: 'line', x0: 0.8, x1: 0.8, y0: -0.5, y1: 0.5, line: { color: 'gray', dash: 'dash', width: 1 }, xref: 'x', yref: 'y' },
+        { type: 'line', x0: 2.2, x1: 2.2, y0: -0.5, y1: 0.5, line: { color: 'gray', dash: 'dash', width: 1 }, xref: 'x', yref: 'y' }
+      ],
+      annotations: [
+        { x: hc_mean, y: 0.65, xref: 'x', yref: 'y2', text: `${hc_mean.toFixed(3)} (HC)`, showarrow: false, font: { color: 'darkblue', size: 10 } },
+        { x: 0.8, y: -0.65, xref: 'x', yref: 'y2', text: `0.8`, showarrow: false, font: { color: 'gray', size: 10 } },
+        { x: 2.2, y: -0.65, xref: 'x', yref: 'y2', text: `2.2`, showarrow: false, font: { color: 'gray', size: 10 } },
+
+        { x: pd_mean, y: 0.65, xref: 'x', yref: 'y', text: `${pd_mean.toFixed(3)} (PD)`, showarrow: false, font: { color: 'darkred', size: 10 } },
+        { x: 0.8, y: -0.65, xref: 'x', yref: 'y', text: `0.8`, showarrow: false, font: { color: 'gray', size: 10 } },
+        { x: 2.2, y: -0.65, xref: 'x', yref: 'y', text: `2.2`, showarrow: false, font: { color: 'gray', size: 10 } }
+      ]
+    };
+
+    // Custom dummy traces for legend
+    const legendHCExt = { x: [null], y: [null], name: 'HC (Azul)', marker: { color: 'blue' }, showlegend: true };
+    const legendPDExt = { x: [null], y: [null], name: 'PD (Vermelho)', marker: { color: 'red' }, showlegend: true };
+
+    Plotly.newPlot('extensivity-subplots', [traceHCExtSplit, tracePDExtSplit, legendHCExt, legendPDExt], layoutSplitExt, { responsive: true, displayModeBar: false });
+
+    // === Boxplot Extensividade (HC vs PD) ===
+    const boxLayoutExt = {
+      yaxis: { range: [0, 3] },
+      boxmode: 'group',
+      height: 250,
+      margin: { l: 30, r: 10, t: 20, b: 40 },
+      plot_bgcolor: "white",
+      paper_bgcolor: "white",
+      showlegend: false
+    };
+    const boxTraceHCExt = { y: hc_x, type: 'box', name: 'HC', marker: { color: 'blue' } };
+    const boxTracePDExt = { y: pd_x, type: 'box', name: 'PD', marker: { color: 'red' } };
+    Plotly.newPlot('extensivity-boxplot', [boxTraceHCExt, boxTracePDExt], boxLayoutExt, { responsive: true, displayModeBar: false });
+
+    // Atualização da Tabela 2x2
+    const hc_above = hc_x.filter(v => v > 2.2).length;
+    const hc_below = hc_x.filter(v => v < 0.8).length;
+    const pd_above = pd_x.filter(v => v > 2.2).length;
+    const pd_below = pd_x.filter(v => v < 0.8).length;
+
+    document.getElementById('ext-hc-above').textContent = hc_above;
+    document.getElementById('ext-hc-below').textContent = hc_below;
+    document.getElementById('ext-pd-above').textContent = pd_above;
+    document.getElementById('ext-pd-below').textContent = pd_below;
+  }
+
+
+
+  btnRunComp.addEventListener('click', async function () {
+    btnRunComp.disabled = true;
+    loader.classList.remove('hidden');
+    errorBox.classList.add('hidden');
+    errorBox.textContent = '';
+
+    try {
+      const response = await fetch('{{ url_for("group_comparison.run_group_comparison") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const res = await response.json();
+
+      loader.classList.add('hidden');
+      btnRunComp.disabled = false;
+
+      if (res.status === 'success') {
+        const data = res.data;
+        const timestamp = new Date().getTime();
+
+        resultsContent.classList.remove('hidden');
+
+        const plotUrl = '/download-optimization-file/' + data.plot_image + '?t=' + timestamp;
+        compPlot.src = plotUrl;
+        plotDownloadLink.href = '/download-optimization-file/' + data.plot_image;
+        statsViewLink.href = '/view-csv-table/' + data.stats_csv;
+        statsDownloadLink.href = '/download-optimization-file/' + data.stats_csv;
+        detailedViewLink.href = '/view-csv-table/' + data.detailed_csv;
+
+        renderSummaryTable(data.summary_columns, data.summary_records);
+        renderGaussianFitPlot(data.detailed_records);
+        renderExtensivityPlot(data.detailed_records);
+      } else {
+        errorBox.textContent = 'Erro: ' + (res.message || 'falha desconhecida.');
+        errorBox.classList.remove('hidden');
+      }
+    } catch (error) {
+      loader.classList.add('hidden');
+      btnRunComp.disabled = false;
+      errorBox.textContent = 'Erro de comunicação com o servidor.';
+      errorBox.classList.remove('hidden');
+    }
+  });
+
+  // Render on initial page load if data exists
+  {% if results.has_results %}
+  const initialRecords = {{ results.detailed_records | tojson | safe }};
+  renderGaussianFitPlot(initialRecords);
+  renderExtensivityPlot(initialRecords);
+  {% endif %}
+</script>
+{% endblock %}
