@@ -2,196 +2,270 @@
 {% block title %}Comparação Raw vs Processed{% endblock %}
 
 {% block content %}
-<div class="grid grid-cols-1 gap-4 lg:grid-cols-[320px_1fr]">
-  <!-- Painel esquerdo -->
-  <aside class="rounded-2xl border bg-white p-4">
-    <div class="flex items-center justify-between">
-      <h2 class="text-sm font-semibold">Pacientes (áudios)</h2>
-      <input id="searchBox" class="w-40 rounded-lg border px-2 py-1 text-xs" placeholder="filtrar..." />
-    </div>
-
-    <div class="mt-4 space-y-4">
-      {% for group, items in patients.items() %}
+<div class="space-y-6">
+  <!-- Header Modernizado -->
+  <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div class="border-b border-slate-100 bg-gradient-to-r from-blue-50 via-white to-indigo-50 px-6 py-6">
+      <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
-          <div class="text-xs font-semibold text-slate-600">{{ group }}</div>
-          <div class="mt-2 max-h-[36vh] overflow-auto rounded-xl border">
-            {% for fn in items %}
-              <button
-                class="w-full border-b px-3 py-2 text-left text-xs hover:bg-slate-50 patientBtn"
-                data-group="{{ group }}"
-                data-filename="{{ fn }}"
-                onclick="loadPatient(this)">
-                <span class="font-mono">{{ fn }}</span>
-              </button>
-            {% endfor %}
-          </div>
+          <span class="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium uppercase tracking-wide text-indigo-700">
+            <span class="h-2 w-2 rounded-full bg-indigo-500 animate-pulse"></span>
+            Comparação de Sinais
+          </span>
+          <h1 class="mt-3 text-2xl font-semibold tracking-tight text-slate-900">
+            Análise RAW vs PROCESSED
+          </h1>
+          <p class="mt-2 max-w-2xl text-sm leading-relaxed text-slate-600">
+            Avalie o impacto do processamento acústico comparando o sinal bruto com o processado.
+            Visualize waveforms, espectros e métricas estatísticas em tempo real.
+          </p>
         </div>
-      {% endfor %}
-    </div>
-  </aside>
-
-  <!-- Painel direito -->
-  <section class="rounded-2xl border bg-white p-6">
-    <div class="flex flex-wrap items-start justify-between gap-3">
-      <div>
-        <h1 class="text-lg font-semibold">Detalhes do paciente / Comparação</h1>
-        <p id="selSubtitle" class="mt-1 text-xs text-slate-600 font-mono">Selecione um áudio à esquerda</p>
+        <div class="shrink-0">
+          <a href="javascript:window.history.back()"
+             class="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-slate-500 focus:ring-offset-2">
+             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+               <path stroke-linecap="round" stroke-linejoin="round" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+             </svg>
+             Voltar
+          </a>
+        </div>
       </div>
     </div>
+  </div>
+
+  <div class="grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
+    <!-- Painel esquerdo (Sticky Sidebar) -->
+    <aside class="sticky top-24 self-start flex flex-col h-[calc(100vh-160px)] rounded-2xl border border-slate-200 bg-white/80 p-4 backdrop-blur-md shadow-sm">
+      <div class="flex items-center justify-between gap-2">
+        <h2 class="text-xs font-bold uppercase tracking-wider text-slate-500">Pacientes</h2>
+        <div class="relative flex-1">
+          <input id="searchBox" 
+                 class="w-full rounded-lg border border-slate-200 bg-white/50 px-3 py-1.5 text-xs focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all font-medium" 
+                 placeholder="Buscar áudio..." />
+        </div>
+      </div>
+
+      <div class="mt-4 flex-1 overflow-y-auto pr-1 custom-scrollbar">
+        {% for group, items in patients.items() %}
+          <div class="mb-4 last:mb-0">
+            <div class="flex items-center gap-2 px-1 text-[10px] font-bold uppercase tracking-widest text-slate-400">
+               <span class="h-1 w-1 rounded-full bg-slate-300"></span>
+               {{ group }}
+            </div>
+            <div class="mt-2 space-y-1">
+              {% for fn in items %}
+                <button
+                  class="w-full rounded-lg px-3 py-2 text-left text-xs transition-all hover:bg-indigo-50 hover:text-indigo-700 group patientBtn relative overflow-hidden"
+                  data-group="{{ group }}"
+                  data-filename="{{ fn }}"
+                  onclick="loadPatient(this)">
+                  <span class="font-mono truncate relative z-10">{{ fn }}</span>
+                  <div class="absolute inset-y-0 left-0 w-1 bg-indigo-500 opacity-0 group-[.active]:opacity-100 transition-opacity"></div>
+                </button>
+              {% endfor %}
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    </aside>
+
+    <!-- Painel direito -->
+    <section class="min-w-0 space-y-8">
+      <div id="welcomePlaceholder" class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-slate-50/50 p-20 text-center">
+        <div class="rounded-full bg-white p-4 shadow-sm ring-1 ring-slate-200">
+           <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+           </svg>
+        </div>
+        <h3 class="mt-4 text-sm font-semibold text-slate-900">Nenhum áudio selecionado</h3>
+        <p class="mt-1 text-xs text-slate-500">Escolha um registro na lista à esquerda para iniciar a comparação.</p>
+      </div>
+
+      <div id="selectionHeader" class="hidden animate-in fade-in slide-in-from-top-4 duration-500">
+        <div class="flex items-center gap-3">
+          <div class="h-10 w-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-lg shadow-indigo-200">
+             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+             </svg>
+          </div>
+          <div>
+            <h2 id="selTitle" class="text-xl font-bold text-slate-900 tracking-tight">Carregando...</h2>
+            <p id="selSubtitle" class="text-xs font-mono text-slate-500">Selecione um áudio à esquerda</p>
+          </div>
+        </div>
+      </div>
 
     <div id="loading" class="mt-6 text-sm text-slate-600 hidden">Carregando dados...</div>
     <div id="errorBox" class="mt-6 hidden rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700"></div>
 
-    <div id="content" class="mt-6 hidden space-y-8">
+    <div id="content" class="mt-6 hidden space-y-10 animate-in fade-in zoom-in-95 duration-700">
 
       <!-- Áudio -->
-      <section class="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <div class="rounded-2xl border p-4">
-          <div class="text-sm font-semibold">Áudio RAW</div>
-          <audio id="rawPlayer" controls class="mt-3 w-full"></audio>
+      <section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+          <div class="flex items-center gap-2 text-sm font-bold text-slate-700 uppercase tracking-tight">
+            <span class="h-2 w-2 rounded-full bg-blue-500"></span>
+            Áudio RAW (Original)
+          </div>
+          <div class="mt-4 rounded-xl bg-slate-50 p-2">
+            <audio id="rawPlayer" controls class="w-full h-10"></audio>
+          </div>
         </div>
-        <div class="rounded-2xl border p-4">
-          <div class="text-sm font-semibold">Áudio PROCESSED</div>
-          <audio id="procPlayer" controls class="mt-3 w-full"></audio>
+        <div class="group rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-all hover:shadow-md">
+          <div class="flex items-center gap-2 text-sm font-bold text-slate-700 uppercase tracking-tight">
+            <span class="h-2 w-2 rounded-full bg-emerald-500"></span>
+            Áudio PROCESSED (VAD/Filtro)
+          </div>
+          <div class="mt-4 rounded-xl bg-slate-50 p-2">
+            <audio id="procPlayer" controls class="w-full h-10"></audio>
+          </div>
         </div>
       </section>
 
       <!-- Demografia -->
-      <section class="rounded-2xl border p-4">
-        <div class="text-sm font-semibold">Dados Demográficos</div>
-        <div id="demoGrid" class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-3"></div>
+      <section class="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+        <div class="border-b border-slate-100 bg-slate-50/50 px-5 py-3">
+           <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Metadados do Cadastro</h3>
+        </div>
+        <div id="demoGrid" class="grid grid-cols-1 gap-4 p-5 md:grid-cols-3"></div>
       </section>
 
       <!-- Propriedades -->
-      <section class="rounded-2xl border p-4">
-        <div class="text-sm font-semibold">Propriedades do arquivo (RAW vs PROCESSED)</div>
-        <div class="mt-3 overflow-hidden rounded-xl border">
-          <table class="w-full text-xs">
-            <thead class="bg-slate-50">
-              <tr class="[&>th]:px-3 [&>th]:py-2 text-left">
+      <section class="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+        <div class="border-b border-slate-100 bg-slate-50/50 px-5 py-3">
+           <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Propriedades Técnicas (Comparativo)</h3>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs text-left">
+            <thead>
+              <tr class="bg-slate-50/50 text-slate-500 font-semibold border-b border-slate-100 [&>th]:px-5 [&>th]:py-3">
                 <th>Campo</th>
                 <th>RAW</th>
                 <th>PROCESSED</th>
               </tr>
             </thead>
-            <tbody id="propsTable" class="divide-y"></tbody>
+            <tbody id="propsTable" class="divide-y divide-slate-100"></tbody>
           </table>
         </div>
       </section>
 
       <!-- Waveform -->
-      <section class="grid grid-cols-1 gap-4 ">
-        <div class="rounded-2xl border p-4">
-          <div class="text-sm font-semibold">Waveform RAW</div>
-          <div id="waveRaw" class="mt-3 h-[320px]"></div>
+      <section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Waveform RAW</div>
+          <div id="waveRaw" class="mt-4 h-[320px]"></div>
         </div>
-        <div class="rounded-2xl border p-4">
-          <div class="text-sm font-semibold">Waveform PROCESSED</div>
-          <div id="waveProc" class="mt-3 h-[320px]"></div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Waveform PROCESSED</div>
+          <div id="waveProc" class="mt-4 h-[320px]"></div>
         </div>
       </section>
 
       <!-- FFT -->
-      <section class="grid grid-cols-1 gap-4 ">
-        <div class="rounded-2xl border p-4">
-          <div class="text-sm font-semibold">Espectro RAW (FFT)</div>
-          <div id="fftRaw" class="mt-3 h-[320px]"></div>
+      <section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Espectro RAW (FFT)</div>
+          <div id="fftRaw" class="mt-4 h-[320px]"></div>
         </div>
-        <div class="rounded-2xl border p-4">
-          <div class="text-sm font-semibold">Espectro PROCESSED (FFT)</div>
-          <div id="fftProc" class="mt-3 h-[320px]"></div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Espectro PROCESSED (FFT)</div>
+          <div id="fftProc" class="mt-4 h-[320px]"></div>
         </div>
       </section>
 
       <!-- Spectrogram -->
-      <section class="grid grid-cols-1 gap-4 ">
-        <div class="rounded-2xl border p-4">
-          <div class="text-sm font-semibold">Espectrograma RAW (STFT)</div>
-          <div id="specgramRaw" class="mt-3 h-[420px]"></div>
+      <section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Espectrograma RAW (STFT)</div>
+          <div id="specgramRaw" class="mt-4 h-[420px]"></div>
         </div>
-        <div class="rounded-2xl border p-4">
-          <div class="text-sm font-semibold">Espectrograma PROCESSED (STFT)</div>
-          <div id="specgramProc" class="mt-3 h-[420px]"></div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Espectrograma PROCESSED (STFT)</div>
+          <div id="specgramProc" class="mt-4 h-[420px]"></div>
         </div>
       </section>
 
       <!-- PSD F0 Zoom -->
-      <section class="grid grid-cols-1 gap-4 ">
-        <div class="rounded-2xl border p-4">
-          <div class="text-sm font-semibold">Zoom no pico da frequência fundamental (PSD) - RAW</div>
-          <div id="psdRaw" class="mt-3 h-[320px]"></div>
+      <section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Pico F0 (PSD) - RAW</div>
+          <div id="psdRaw" class="mt-4 h-[320px]"></div>
         </div>
-        <div class="rounded-2xl border p-4">
-          <div class="text-sm font-semibold">Zoom no pico da frequência fundamental (PSD) - PROCESSED</div>
-          <div id="psdProc" class="mt-3 h-[320px]"></div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Pico F0 (PSD) - PROCESSED</div>
+          <div id="psdProc" class="mt-4 h-[320px]"></div>
         </div>
       </section>
 
       <!-- Efeito do filtro -->
-      <section class="rounded-2xl border p-4">
-        <div class="text-sm font-semibold">Efeito do filtro no conteúdo espectral (RAW vs PROCESSED)</div>
-        <div id="filterEffectChart" class="mt-3 h-[420px]"></div>
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Efeito do Filtro (Comparação Espectral)</div>
+        <div id="filterEffectChart" class="mt-4 h-[440px]"></div>
       </section>
 
       <!-- Autocorrelation -->
-      <section class="grid grid-cols-1 gap-4 ">
-        <div class="rounded-2xl border p-4">
-          <div class="text-sm font-semibold">Autocorrelação RAW</div>
-          <div id="autoRaw" class="mt-3 h-[320px]"></div>
+      <section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Autocorrelação RAW</div>
+          <div id="autoRaw" class="mt-4 h-[320px]"></div>
         </div>
-        <div class="rounded-2xl border p-4">
-          <div class="text-sm font-semibold">Autocorrelação PROCESSED</div>
-          <div id="autoProc" class="mt-3 h-[320px]"></div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Autocorrelação PROCESSED</div>
+          <div id="autoProc" class="mt-4 h-[320px]"></div>
         </div>
       </section>
 
       <!-- Histogram -->
-      <section class="grid grid-cols-1 gap-4 ">
-        <div class="rounded-2xl border p-4">
-          <div class="text-sm font-semibold">Distribuição estatística das amplitudes - RAW</div>
-          <div id="histRaw" class="mt-3 h-[320px]"></div>
+      <section class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Distribuição Amplitudes - RAW</div>
+          <div id="histRaw" class="mt-4 h-[320px]"></div>
         </div>
-        <div class="rounded-2xl border p-4">
-          <div class="text-sm font-semibold">Distribuição estatística das amplitudes - PROCESSED</div>
-          <div id="histProc" class="mt-3 h-[320px]"></div>
+        <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Distribuição Amplitudes - PROCESSED</div>
+          <div id="histProc" class="mt-4 h-[320px]"></div>
         </div>
       </section>
 
       <!-- Filter response -->
-      <section class="rounded-2xl border p-4">
-        <div class="text-sm font-semibold">Resposta teórica do filtro Butterworth</div>
-        <div id="butterChart" class="mt-3 h-[420px]"></div>
+      <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+        <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Resposta Teórica (Butterworth)</div>
+        <div id="butterChart" class="mt-4 h-[440px]"></div>
       </section>
 
       <!-- Features paired -->
-      <section class="rounded-2xl border p-4">
-        <div class="text-sm font-semibold">Features extraídas (mean / std)</div>
-        <div class="mt-3 overflow-hidden rounded-xl border">
-          <table class="w-full text-xs">
-            <thead class="bg-slate-50">
-              <tr class="[&>th]:px-3 [&>th]:py-2 text-left">
+      <section class="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+        <div class="border-b border-slate-100 bg-slate-50/50 px-5 py-3">
+           <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Features Extraídas (Média / Desvio)</h3>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs text-left">
+            <thead>
+              <tr class="bg-slate-50/50 text-slate-500 font-semibold border-b border-slate-100 [&>th]:px-5 [&>th]:py-3">
                 <th>Feature</th>
                 <th>Mean</th>
                 <th>Std</th>
               </tr>
             </thead>
-            <tbody id="featuresPairedTable" class="divide-y"></tbody>
+            <tbody id="featuresPairedTable" class="divide-y divide-slate-100"></tbody>
           </table>
         </div>
       </section>
 
       <!-- Features single -->
-      <section class="rounded-2xl border p-4">
-        <div class="text-sm font-semibold">Features adicionais</div>
-        <div class="mt-3 overflow-hidden rounded-xl border">
-          <table class="w-full text-xs">
-            <thead class="bg-slate-50">
-              <tr class="[&>th]:px-3 [&>th]:py-2 text-left">
+      <section class="rounded-2xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+        <div class="border-b border-slate-100 bg-slate-50/50 px-5 py-3">
+           <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500">Features Adicionais (Escalares)</h3>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-xs text-left">
+            <thead>
+              <tr class="bg-slate-50/50 text-slate-500 font-semibold border-b border-slate-100 [&>th]:px-5 [&>th]:py-3">
                 <th>Feature</th>
                 <th>Valor</th>
               </tr>
             </thead>
-            <tbody id="featuresSingleTable" class="divide-y"></tbody>
+            <tbody id="featuresSingleTable" class="divide-y divide-slate-100"></tbody>
           </table>
         </div>
       </section>
@@ -214,7 +288,7 @@
   });
 
   function purgeAllPlots() {
-    [
+    const plots = [
       "waveRaw", "waveProc",
       "fftRaw", "fftProc",
       "specgramRaw", "specgramProc",
@@ -223,33 +297,36 @@
       "autoRaw", "autoProc",
       "histRaw", "histProc",
       "butterChart"
-    ].forEach(id => {
+    ];
+    plots.forEach(id => {
       const el = document.getElementById(id);
-      if (el) Plotly.purge(el);
+      if (el && el.classList.contains('js-plotly-plot')) {
+        Plotly.purge(el);
+      }
     });
   }
 
-  function badValue(v) {
-    if (v === null || v === undefined) return true;
-    const n = Number(v);
-    return (!Number.isFinite(n)) || n === 0;
-  }
-
   function formatValue(v) {
-    if (v === null || v === undefined) return "NaN";
-    if (typeof v === "number") return Number.isFinite(v) ? String(v) : "NaN";
+    if (v === null || v === undefined) return '<span class="text-slate-300">N/A</span>';
+    if (typeof v === "number") {
+       if (!Number.isFinite(v)) return '<span class="text-rose-400 font-bold">NaN</span>';
+       return v % 1 === 0 ? v.toString() : v.toFixed(4);
+    }
     return String(v);
   }
 
   function cellClass(v) {
-    return badValue(v) ? "font-mono text-red-600 font-semibold" : "font-mono";
+    if (v === null || v === undefined || (typeof v === "number" && !Number.isFinite(v))) {
+      return "font-mono text-rose-500 font-semibold bg-rose-50/50";
+    }
+    return "font-mono text-slate-700";
   }
 
   function kvCard(k, v) {
     return `
-      <div class="rounded-xl border bg-slate-50 p-3">
-        <div class="text-[11px] font-medium text-slate-600">${k}</div>
-        <div class="mt-1 font-mono text-xs text-slate-900 break-all">${formatValue(v)}</div>
+      <div class="rounded-xl border border-slate-100 bg-slate-50/50 p-4 transition-all hover:bg-white hover:shadow-sm">
+        <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400">${k}</div>
+        <div class="mt-1 font-mono text-sm font-semibold text-slate-900 break-all">${formatValue(v)}</div>
       </div>
     `;
   }
@@ -258,7 +335,15 @@
     const group = btn.dataset.group;
     const filename = btn.dataset.filename;
 
-    document.getElementById("selSubtitle").textContent = `${group}/${filename}`;
+    // UI State: Reset buttons
+    document.querySelectorAll(".patientBtn").forEach(b => b.classList.remove("bg-indigo-50", "text-indigo-700", "active"));
+    btn.classList.add("bg-indigo-50", "text-indigo-700", "active");
+
+    // UI State: Show Headers
+    document.getElementById("welcomePlaceholder").classList.add("hidden");
+    document.getElementById("selectionHeader").classList.remove("hidden");
+    document.getElementById("selTitle").textContent = filename;
+    document.getElementById("selSubtitle").textContent = `${group} / ${filename}`;
     
     const loading = document.getElementById("loading");
     const errorBox = document.getElementById("errorBox");
@@ -271,7 +356,7 @@
 
     try {
       const res = await fetch(`/compare/info/${encodeURIComponent(group)}/${encodeURIComponent(filename)}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) throw new Error(`Erro no servidor: ${res.status}`);
       const data = await res.json();
 
       const ranges = data.ranges || {};
@@ -279,20 +364,21 @@
       // 1. Players
       document.getElementById("rawPlayer").src = data.raw.play_url;
       document.getElementById("procPlayer").src = data.processed.play_url;
+      document.getElementById("rawPlayer").load();
+      document.getElementById("procPlayer").load();
 
       // Demografia
       const demoGrid = document.getElementById("demoGrid");
       const hi = data?.demographics?.highlight || {};
       demoGrid.innerHTML = [
-        kvCard("label", hi.label),
-        kvCard("age", hi.age),
-        kvCard("sex", hi.sex),
+        kvCard("Label / Grupo", hi.label || group),
+        kvCard("Idade", hi.age),
+        kvCard("Sexo", hi.sex),
       ].join("");
 
       // Propriedades
       const propKeys = [
-        "compname", "duration_sec", "n_channels", "sample_width_bytes",
-        "comptype", "n_frames", "sample_rate_hz", "size_bytes"
+        "duration_sec", "sample_rate_hz", "n_channels", "n_frames", "size_bytes", "compname"
       ];
       const propsTable = document.getElementById("propsTable");
       propsTable.innerHTML = "";
@@ -300,26 +386,28 @@
         const rawV = data.raw.props[k];
         const procV = data.processed.props[k];
         propsTable.innerHTML += `
-          <tr class="[&>td]:px-3 [&>td]:py-2">
-            <td class="font-mono">${k}</td>
-            <td class="font-mono">${formatValue(rawV)}</td>
-            <td class="font-mono">${formatValue(procV)}</td>
+          <tr class="hover:bg-slate-50/50 transition-colors [&>td]:px-5 [&>td]:py-3">
+            <td class="font-medium text-slate-500 uppercase text-[10px] tracking-wider">${k.replace('_', ' ')}</td>
+            <td class="font-mono text-slate-700">${formatValue(rawV)}</td>
+            <td class="font-mono text-slate-700">${formatValue(procV)}</td>
           </tr>
         `;
       }
 
-      // 2. Renderização de Gráficos via AudioVisualizer
+      // 2. Renderização de Gráficos
       const AV = AudioVisualizer;
+      const blue = "#4f46e5"; // Indigo 600
+      const green = "#10b981"; // Emerald 500
 
       AV.plotLine("waveRaw", data.raw.waveform, "Tempo (s)", "Amplitude", 
-        { color: "#2563eb", xRange: ranges.waveform?.x, yRange: ranges.waveform?.y });
+        { color: blue, xRange: ranges.waveform?.x, yRange: ranges.waveform?.y });
       AV.plotLine("waveProc", data.processed.waveform, "Tempo (s)", "Amplitude", 
-        { color: "#16a34a", xRange: ranges.waveform?.x, yRange: ranges.waveform?.y });
+        { color: green, xRange: ranges.waveform?.x, yRange: ranges.waveform?.y });
       
       AV.plotLine("fftRaw", data.raw.spectrum, "Frequência (Hz)", "Magnitude", 
-        { color: "#2563eb", xRange: ranges.spectrum?.x, yRange: ranges.spectrum?.y });
+        { color: blue, xRange: ranges.spectrum?.x, yRange: ranges.spectrum?.y });
       AV.plotLine("fftProc", data.processed.spectrum, "Frequência (Hz)", "Magnitude", 
-        { color: "#16a34a", xRange: ranges.spectrum?.x, yRange: ranges.spectrum?.y });
+        { color: green, xRange: ranges.spectrum?.x, yRange: ranges.spectrum?.y });
 
       AV.plotHeatmap("specgramRaw", data.raw.spectrogram, "Tempo (s)", "Frequência (Hz)",
         { xRange: ranges.spectrogram?.x, yRange: ranges.spectrogram?.y, zRange: ranges.spectrogram?.z });
@@ -327,9 +415,9 @@
         { xRange: ranges.spectrogram?.x, yRange: ranges.spectrogram?.y, zRange: ranges.spectrogram?.z });
 
       AV.plotLine("psdRaw", data.raw.psd_f0, "Frequência (Hz)", "PSD",
-        { color: "#2563eb", xRange: ranges.psd_f0?.x, yRange: ranges.psd_f0?.y });
+        { color: blue, xRange: ranges.psd_f0?.x, yRange: ranges.psd_f0?.y });
       AV.plotLine("psdProc", data.processed.psd_f0, "Frequência (Hz)", "PSD",
-        { color: "#16a34a", xRange: ranges.psd_f0?.x, yRange: ranges.psd_f0?.y });
+        { color: green, xRange: ranges.psd_f0?.x, yRange: ranges.psd_f0?.y });
 
       AV.plotFilterEffect(
         "filterEffectChart",
@@ -339,14 +427,14 @@
       );
 
       AV.plotLine("autoRaw", data.raw.autocorr, "Lag (s)", "Autocorrelação", 
-        { color: "#2563eb",xRange: ranges.autocorr?.x, yRange: ranges.autocorr?.y });
+        { color: blue, xRange: ranges.autocorr?.x, yRange: ranges.autocorr?.y });
       AV.plotLine("autoProc", data.processed.autocorr, "Lag (s)", "Autocorrelação",
-        { color: "#16a34a", xRange: ranges.autocorr?.x, yRange: ranges.autocorr?.y });
+        { color: green, xRange: ranges.autocorr?.x, yRange: ranges.autocorr?.y });
 
       AV.plotHistogram("histRaw", data.raw.hist, "Amplitude", "Contagem",
-        { color: "#2563eb", xRange: ranges.hist?.x, yRange: ranges.hist?.y });
+        { color: blue, xRange: ranges.hist?.x, yRange: ranges.hist?.y });
       AV.plotHistogram("histProc", data.processed.hist, "Amplitude", "Contagem", 
-        { color: "#16a34a", xRange: ranges.hist?.x, yRange: ranges.hist?.y });
+        { color: green, xRange: ranges.hist?.x, yRange: ranges.hist?.y });
       
       AV.plotButterResponse("butterChart", data.filter_response);
 
@@ -355,8 +443,8 @@
       pairedT.innerHTML = "";
       for (const r of data.features.paired || []) {
         pairedT.innerHTML += `
-          <tr class="[&>td]:px-3 [&>td]:py-2">
-            <td class="font-mono">${r.feature}</td>
+          <tr class="hover:bg-slate-50/50 transition-colors [&>td]:px-5 [&>td]:py-3">
+            <td class="font-medium text-slate-900">${r.feature}</td>
             <td class="${cellClass(r.mean)}">${formatValue(r.mean)}</td>
             <td class="${cellClass(r.std)}">${formatValue(r.std)}</td>
           </tr>
@@ -368,8 +456,8 @@
       singleT.innerHTML = "";
       for (const r of data.features.single || []) {
         singleT.innerHTML += `
-          <tr class="[&>td]:px-3 [&>td]:py-2">
-            <td class="font-mono">${r.feature}</td>
+          <tr class="hover:bg-slate-50/50 transition-colors [&>td]:px-5 [&>td]:py-3">
+            <td class="font-medium text-slate-900">${r.feature}</td>
             <td class="${cellClass(r.value)}">${formatValue(r.value)}</td>
           </tr>
         `;
@@ -377,10 +465,16 @@
 
       loading.classList.add("hidden");
       content.classList.remove("hidden");
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (err) {
       loading.classList.add("hidden");
       errorBox.classList.remove("hidden");
-      errorBox.textContent = `Erro ao carregar análise: ${err}`;
+      errorBox.innerHTML = `
+        <div class="flex items-center gap-3">
+          <svg class="h-5 w-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          <span>${err.message}</span>
+        </div>
+      `;
       console.error(err);
     }
   }

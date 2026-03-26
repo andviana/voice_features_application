@@ -41,13 +41,57 @@
     </div>
   </div>
 
-  <!-- ACOUSTIC FEATURES -->
+  <!-- STATISTICAL ANALYSIS RESULTS -->
+  <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div class="border-b border-slate-100 bg-slate-50/50 px-6 py-4 flex items-center justify-between">
+      <h2 class="text-lg font-semibold text-slate-900">Análise Estatística (HC vs PD)</h2>
+      <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nível de Significância α = 0.01</span>
+    </div>
+    
+    <div class="p-6 overflow-x-auto">
+      <table class="w-full text-sm text-left border-collapse">
+        <thead>
+          <tr class="bg-slate-900 text-slate-200 border-b border-slate-800">
+            <th class="px-4 py-3 font-semibold rounded-tl-xl">Variável</th>
+            <th class="px-4 py-3 font-semibold text-center">Teste Aplicado</th>
+            <th class="px-4 py-3 font-semibold text-center">Estatística</th>
+            <th class="px-4 py-3 font-semibold text-center">Valor-p</th>
+            <th class="px-4 py-3 font-semibold text-center">Tam. Efeito</th>
+            <th class="px-4 py-3 font-semibold rounded-tr-xl text-center">Significativo?</th>
+          </tr>
+        </thead>
+        <tbody class="divide-y divide-slate-100">
+          {% for res in data.stats %}
+          <tr class="hover:bg-slate-50/80 transition-colors">
+            <td class="px-4 py-3 font-medium text-slate-700">{{ res.variable }}</td>
+            <td class="px-4 py-3 text-center text-slate-500 font-mono text-xs">{{ res.test }}</td>
+            <td class="px-4 py-3 text-center font-mono text-xs text-slate-600">{{ res.statistic }}</td>
+            <td class="px-4 py-3 text-center font-mono text-xs {{ 'text-teal-600 font-bold' if res.is_significant else 'text-slate-400' }}">
+              {{ "%.4f"|format(res.p_value) if res.p_value > 0.0001 else "< 0.0001" }}
+            </td>
+            <td class="px-4 py-3 text-center text-slate-500 text-xs">{{ res.effect_size }}</td>
+            <td class="px-4 py-3 text-center">
+              {% if res.is_significant %}
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-teal-100 text-teal-800">Sim</span>
+              {% else %}
+              <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-400">Não</span>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ACOUSTIC FEATURES & TSALLIS -->
   <div class="rounded-2xl border border-slate-200 bg-white shadow-sm">
     <div class="border-b border-slate-100 px-6 py-4">
-      <h2 class="text-lg font-semibold text-slate-900">Características Acústicas (features.csv)</h2>
+      <h2 class="text-lg font-semibold text-slate-900">Características Acústicas e Parâmetros q</h2>
     </div>
     
     <div class="p-6 space-y-8">
+      <!-- Pitch -->
       <div>
         <h3 class="mb-4 text-md font-semibold text-slate-800">Pitch Distribution (Boxplots Pareados)</h3>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -58,14 +102,38 @@
         </div>
       </div>
 
-      <div class="border-t pt-6">
-        <h3 class="mb-4 text-md font-semibold text-slate-800">Local Jitter Distribution</h3>
-        <div id="plot-jitter-box" class="h-64"></div>
+      <!-- Jitter & Shimmer side by side -->
+      <div class="border-t pt-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div>
+          <h3 class="mb-4 text-md font-semibold text-slate-800">Local Jitter Distribution</h3>
+          <div id="plot-jitter-box" class="h-64"></div>
+        </div>
+        <div class="border-t md:border-t-0 md:border-l border-slate-100 md:pl-8 pt-6 md:pt-0">
+          <h3 class="mb-4 text-md font-semibold text-slate-800">Local Shimmer Distribution</h3>
+          <div id="plot-shimmer-box" class="h-64"></div>
+        </div>
       </div>
 
+      <!-- Tsallis side by side -->
+      <div class="border-t pt-6 grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div>
+          <h3 class="mb-4 text-md font-semibold text-slate-800">q-Extensividade (Análise q)</h3>
+          <div id="plot-tsallis-ext" class="h-64"></div>
+        </div>
+        <div class="border-t md:border-t-0 md:border-l border-slate-100 md:pl-8 pt-6 md:pt-0">
+          <h3 class="mb-4 text-md font-semibold text-slate-800">q-Gaussian Fit (Análise q)</h3>
+          <div id="plot-tsallis-gauss" class="h-64"></div>
+        </div>
+      </div>
+
+      <!-- Top MFCCs Identified by Weight/Impact -->
       <div class="border-t pt-6">
-        <h3 class="mb-4 text-md font-semibold text-slate-800">Local Shimmer Distribution</h3>
-        <div id="plot-shimmer-box" class="h-64"></div>
+        <h3 class="mb-4 text-md font-semibold text-slate-800">Distribuição das Principais MFCCs</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div id="plot-mfcc-1" class="h-64"></div>
+          <div id="plot-mfcc-2" class="h-64"></div>
+          <div id="plot-mfcc-3" class="h-64"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -74,6 +142,25 @@
 <script>
   const data = {{ data | tojson | safe }};
   
+  // Plot Helpers
+  function plotGroupedBox(div, hc_vals, pd_vals, title, yAxisTitle) {
+    if (!hc_vals.length && !pd_vals.length) {
+        document.getElementById(div).innerHTML = `<div class='flex h-full items-center justify-center text-xs text-slate-300 italic'>Sem dados suficientes</div>`;
+        return;
+    }
+    Plotly.newPlot(div, [
+      { y: hc_vals, type: 'box', name: 'HC', marker: { color: '#2563eb' } },
+      { y: pd_vals, type: 'box', name: 'PD', marker: { color: '#dc2626' } }
+    ], {
+      title: title,
+      margin: {t:40, b:40},
+      yaxis: { title: yAxisTitle },
+      boxmode: 'group',
+      plot_bgcolor: "white",
+      paper_bgcolor: "white"
+    }, { responsive: true, displayModeBar: false });
+  }
+
   // 1. Amostras
   Plotly.newPlot("plot-samples", [{
     x: ['HC', 'PD'],
@@ -112,30 +199,23 @@
   plotBox('plot-age-hc', data.demographics.age.HC, 'HC', '#2563eb');
   plotBox('plot-age-pd', data.demographics.age.PD, 'PD', '#dc2626');
 
-  // 4. Features (Pitch, Jitter, Shimmer) - Pareados em Boxplot
-  function plotGroupedBox(div, hc_vals, pd_vals, title, yAxisTitle) {
-    Plotly.newPlot(div, [
-      { y: hc_vals, type: 'box', name: 'HC', marker: { color: '#2563eb' } },
-      { y: pd_vals, type: 'box', name: 'PD', marker: { color: '#dc2626' } }
-    ], {
-      title: title,
-      margin: {t:40, b:40},
-      yaxis: { title: yAxisTitle },
-      boxmode: 'group',
-      plot_bgcolor: "white",
-      paper_bgcolor: "white"
-    }, { responsive: true, displayModeBar: false });
-  }
-
-  // Pitch (4 Sub-métricas)
+  // 4. Features (Pitch, Jitter, Shimmer)
   plotGroupedBox('plot-pitch-mean', data.features.pitch.HC.f0_mean_hz, data.features.pitch.PD.f0_mean_hz, 'F0 Mean (Hz)', 'Frequência (Hz)');
   plotGroupedBox('plot-pitch-min', data.features.pitch.HC.f0_min_hz, data.features.pitch.PD.f0_min_hz, 'F0 Min (Hz)', 'Frequência (Hz)');
   plotGroupedBox('plot-pitch-max', data.features.pitch.HC.f0_max_hz, data.features.pitch.PD.f0_max_hz, 'F0 Max (Hz)', 'Frequência (Hz)');
   plotGroupedBox('plot-pitch-cv', data.features.pitch.HC.f0_cv, data.features.pitch.PD.f0_cv, 'F0 Coef. Var.', 'Variação');
 
-  // Jitter e Shimmer
   plotGroupedBox('plot-jitter-box', data.features.jitter.HC, data.features.jitter.PD, 'Local Jitter', 'Jitter (%)');
   plotGroupedBox('plot-shimmer-box', data.features.shimmer.HC, data.features.shimmer.PD, 'Local Shimmer', 'Shimmer (%)');
+
+  // 5. Tsallis q Parameters
+  plotGroupedBox('plot-tsallis-ext', data.features.tsallis.HC.q_ext, data.features.tsallis.PD.q_ext, 'q-Extensividade', 'Parâmetro q');
+  plotGroupedBox('plot-tsallis-gauss', data.features.tsallis.HC.q_gauss, data.features.tsallis.PD.q_gauss, 'q-Gaussian Fit', 'Parâmetro q');
+
+  // 6. Top MFCCs
+  plotGroupedBox('plot-mfcc-1', data.features.mfccs.HC.m1, data.features.mfccs.PD.m1, 'MFCC 1', 'Valor');
+  plotGroupedBox('plot-mfcc-2', data.features.mfccs.HC.m2, data.features.mfccs.PD.m2, 'MFCC 2', 'Valor');
+  plotGroupedBox('plot-mfcc-3', data.features.mfccs.HC.m3, data.features.mfccs.PD.m3, 'MFCC 3', 'Valor');
 
 </script>
 {% endblock %}

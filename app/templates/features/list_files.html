@@ -2,49 +2,96 @@
 {% block title %}Datasets Extraídos{% endblock %}
 
 {% block content %}
-<div class="rounded-2xl bg-white p-6 shadow-sm">
-    <div class="mb-6">
-        <h1 class="text-xl font-semibold text-slate-800">Características Extraídas (Features)</h1>
-        <p class="text-sm text-slate-500">Arquivos CSV prontos para análise estatística e Machine Learning.</p>
+<section class="space-y-6">
+  <!-- Cabeçalho Premium -->
+  <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+    <div class="border-b border-slate-100 bg-gradient-to-r from-indigo-50 via-white to-blue-50 px-6 py-6">
+      <div class="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div>
+          <span class="inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1 text-xs font-medium uppercase tracking-wide text-indigo-700">
+            <span class="h-2 w-2 rounded-full bg-indigo-500 animate-pulse"></span>
+            Extração de Características
+          </span>
+          <h1 class="mt-3 text-2xl font-semibold tracking-tight text-slate-900">
+            Características Extraídas (Features)
+          </h1>
+          <p class="mt-2 text-sm text-slate-600">
+            Arquivos CSV consolidados, prontos para análise estatística e modelos de Machine Learning.
+          </p>
+        </div>
+        
+        <div class="flex h-12 w-12 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-500 transition-transform hover:scale-105">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+        </div>
+      </div>
     </div>
+  </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {% for f in files %}
-        <div class=" rounded-xl border border-slate-200 p-4 hover:bg-slate-50 transition-colors">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                    <div class="rounded-lg bg-indigo-100 p-3 text-indigo-600">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                    </div>
-                    <div>
-                        <h3 class="font-medium text-slate-900">{{ f.name }}</h3>
-                        <div class="flex gap-3 text-xs text-slate-500 mt-1">
-                            <span class="font-semibold text-indigo-600">{{ f.group }}</span>
-                            <span>{{ f.size }} KB</span>
-                            <span>{{ f.modified }}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>           
-            
-            <div class="flex justify-center gap-2 mt-4">
-                <a href="{{ url_for('features.view_dataset_details', group=f.group, filename=f.name) }}" 
-                class="rounded-lg bg-indigo-50 border border-indigo-200 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100">
-                    Ver Detalhes
-                </a>
-                <a href="{{ url_for('features.download_features', group=f.group, filename=f.name) }}" 
-                class="rounded-lg bg-white border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100">
-                    Baixar CSV
-                </a>
+  <!-- Grid de Datasets -->
+  <div class="grid grid-cols-1 gap-6 md:grid-cols-2">
+    {% for f in files %}
+      <article class="group flex flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition-all hover:shadow-md hover:-translate-y-0.5">
+        <div class="border-b border-slate-100 bg-slate-50/50 px-5 py-3 flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="h-1.5 w-1.5 rounded-full {% if f.group == 'PD_AH' %}bg-orange-500{% else %}bg-indigo-500{% endif %}"></span>
+            <span class="text-[10px] font-bold uppercase tracking-widest text-slate-500">{{ f.group }}</span>
+          </div>
+        </div>
+        
+        <div class="p-6">
+          <h3 class="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1">
+            {{ f.name }}
+          </h3>
+          
+          <div class="mt-4 grid grid-cols-2 gap-4">
+            <div class="rounded-xl border border-slate-50 bg-slate-50/50 p-3">
+              <span class="block text-[9px] font-bold uppercase tracking-tight text-slate-400">Tamanho</span>
+              <span class="text-sm font-mono font-bold text-slate-700">{{ f.size }} KB</span>
             </div>
+            <div class="rounded-xl border border-slate-50 bg-slate-50/50 p-3">
+              <span class="block text-[9px] font-bold uppercase tracking-tight text-slate-400">Modificado em</span>
+              <span class="text-sm font-medium text-slate-700">{{ f.modified }}</span>
+            </div>
+          </div>
+
+          <div class="mt-6 flex items-center gap-3">
+            <a href="{{ url_for('features.view_dataset_details', group=f.group, filename=f.name) }}" 
+               class="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-white border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 shadow-sm transition hover:bg-slate-50 hover:text-indigo-600 active:scale-95 focus:outline-none focus:ring-2 focus:ring-indigo-500/10">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+              Detalhes
+            </a>
+            <a href="{{ url_for('features.download_features', group=f.group, filename=f.name) }}" 
+               class="flex-1 inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 border border-transparent px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-indigo-700 active:scale-95 focus:outline-none focus:ring-2 focus:ring-indigo-500/20">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a2 2 0 002 2h12a2 2 0 002-2v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Baixar CSV
+            </a>
+          </div>
         </div>
-        {% else %}
-        <div class="col-span-2 text-center py-12 border-2 border-dashed border-slate-200 rounded-2xl">
-            <p class="text-slate-400">Nenhum dataset extraído encontrado. Vá para "Áudios Processados" para iniciar a extração.</p>
+      </article>
+    {% else %}
+      <div class="md:col-span-2 flex flex-col items-center justify-center gap-4 py-16 px-6 text-center border-2 border-dashed border-slate-200 rounded-3xl bg-slate-50/30">
+        <div class="h-16 w-16 rounded-full bg-slate-100 flex items-center justify-center text-slate-300">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
+          </svg>
         </div>
-        {% endfor %}
-    </div>
-</div>
+        <div>
+          <h3 class="text-base font-semibold text-slate-900">Nenhum dataset disponível</h3>
+          <p class="mt-1 text-sm text-slate-500 max-w-xs px-2">
+            Vá para "Áudios Processados" e inicie a extração de características para gerar arquivos CSV.
+          </p>
+        </div>
+        <a href="{{ url_for('data_exploration.explore_data') }}" class="mt-2 text-sm font-semibold text-indigo-600 hover:text-indigo-700 transition-colors">
+          Explorar Dados &rarr;
+        </a>
+      </div>
+    {% endfor %}
+  </div>
+</section>
 {% endblock %}

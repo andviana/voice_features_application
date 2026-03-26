@@ -122,45 +122,94 @@ def reject_audios():
 def rebuild_manifest():
     manifest_path = PathUtils.manifest_filepath()
     raw_root = PathUtils.raw_root()
+    demog_xlsx = PathUtils.project_root() / "data" / "metadata" / "Demographics_age_sex.xlsx"
     
-    if not manifest_path.exists():
-         return jsonify({"status": "error", "message": "Manifest não encontrado."}), 404
-         
     try:
-        df = pd.read_csv(manifest_path)
-        
-        possible_cols = ("file_name", "filename", "arquivo", "nome_arquivo", "wav", "audio", "recording_id")
-        file_col = None
-        for c in df.columns:
-            if str(c).strip().lower() in possible_cols:
-                file_col = c
-                break
-                
-        if not file_col:
-            return jsonify({"status": "error", "message": "Coluna de arquivos não encontrada no manifest original."}), 400
+        # 1. Load Master Demographics
+        demog_map = {}
+        if demog_xlsx.exists():
+            df_demog = pd.read_excel(demog_xlsx)
+            # Standardize columns: Sample ID, Age, Sex
+            for _, row in df_demog.iterrows():
+                sid = str(row.get('Sample ID', '')).strip()
+                if sid:
+                    demog_map[sid] = {
+                        "age": row.get('Age'),
+                        "sex": row.get('Sex')
+                    }
 
-        # Lista de arquivos permitidos (que existem fisicamente em HC_AH ou PD_AH)
-        allowed_keys = []
+        # 2. Load Current Manifest (if exists)
+        df_old = pd.DataFrame()
+        if manifest_path.exists():
+            df_old = pd.read_csv(manifest_path)
+            # Ensure recording_id is standardized
+            if 'recording_id' in df_old.columns:
+                df_old['recording_id'] = df_old['recording_id'].astype(str).str.strip()
+
+        # 3. Scan Files on Disk
+        found_files = [] # list of dicts for the new manifest
+        
         for group in PathUtils.ALLOWED_GROUPS_LIST:
             group_dir = PathUtils.safe_group_dir(raw_root, group)
-            if group_dir.exists():
-                for filepath in group_dir.glob("*.wav"):
-                    allowed_keys.append(filepath.name.replace(".wav", ""))
+            if not group_dir.exists():
+                continue
+                
+            for filepath in group_dir.glob("*.wav"):
+                fname = filepath.name
+                rid = fname.replace(".wav", "")
+                
+                # Try to get data from old manifest first to preserve info
+                existing_row = {}
+                if not df_old.empty and 'recording_id' in df_old.columns:
+                    hit = df_old[df_old['recording_id'] == rid]
+                    if not hit.empty:
+                        existing_row = hit.iloc[0].to_dict()
+                
+                # Fetch demographics from master XLSX (overwrites or fills)
+                dg = demog_map.get(rid, {})
+                age = dg.get("age", existing_row.get("age", "-"))
+                sex = dg.get("sex", existing_row.get("sex", "-"))
 
-        df['_lookup'] = df[file_col].astype(str).str.strip().str.replace(".wav", "", regex=False)
+                # Deriva participant_id: AH_PID_GUID -> PID
+                # manifest usually has: participant_id, recording_id, group, age, sex, wav_path, sampling_rate
+                pid = existing_row.get("participant_id")
+                if not pid:
+                    parts = rid.split("_")
+                    if len(parts) > 1:
+                        pid = parts[1]
+                    else:
+                        pid = rid
+                
+                new_row = {
+                    "participant_id": pid,
+                    "recording_id": rid,
+                    "group": group.replace("_AH", ""), # Standardization: HC_AH -> HC
+                    "age": age,
+                    "sex": sex,
+                    "wav_path": str(filepath.resolve()),
+                    "sampling_rate": existing_row.get("sampling_rate", 48000)
+                }
+                found_files.append(new_row)
+
+        if not found_files:
+            return jsonify({"status": "warning", "message": "Nenhum arquivo .wav encontrado nas pastas brutas."}), 200
+
+        # 4. Save New Manifest
+        df_new = pd.DataFrame(found_files)
+        # Ensure column order matches standard
+        cols = ["participant_id", "recording_id", "group", "age", "sex", "wav_path", "sampling_rate"]
+        df_new = df_new[cols]
         
-        filtered_df = df[df['_lookup'].isin(allowed_keys)].copy()
-        filtered_df.drop(columns=['_lookup'], inplace=True)
-        
-        # Salva o manifest filtrado
-        filtered_df.to_csv(manifest_path, index=False)
+        df_new.to_csv(manifest_path, index=False)
         
         return jsonify({
             "status": "success", 
-            "message": f"Manifest reconstruído com sucesso! Diminuiu de {len(df)} para {len(filtered_df)} registros."
+            "message": f"Manifest reconstruído e enriquecido com sucesso! Total de {len(df_new)} arquivos registrados."
         })
         
     except Exception as e:
+        import traceback
+        print(traceback.format_exc())
         return jsonify({"status": "error", "message": f"Falha ao reconstruir manifest: {str(e)}"}), 500
 
 

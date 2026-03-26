@@ -4,6 +4,7 @@ import os
 from flask import render_template, jsonify, current_app, send_file, abort
 from pathlib import Path
 import pandas as pd
+from datetime import datetime
 
 from typing import Optional
 from . import bp
@@ -104,7 +105,7 @@ def list_features():
                     "name": csv_file.name,
                     "path": f"{group}/{csv_file.name}",
                     "size": round(stats.st_size / 1024, 2),
-                    "modified": stats.st_mtime
+                    "modified": datetime.fromtimestamp(stats.st_mtime).strftime('%d/%m/%Y %H:%M')
                 })
 
     return render_template("features/list_files.html", files=files_info)
@@ -172,7 +173,7 @@ def view_dataset_details(group: str, filename: str):
             summary=summary,
             stats=stats_dict,
             columns=df.columns.tolist(),
-            data=df.values.tolist()
+            data=df.head(100).values.tolist()
         )
     except Exception as e:
         return f"Erro ao processar o dataset: {str(e)}", 500

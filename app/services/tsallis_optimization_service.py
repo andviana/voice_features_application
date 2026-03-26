@@ -165,11 +165,11 @@ class TsallisOptimizationService:
         plt.figure(figsize=(12, 5))
 
         plt.subplot(1, 2, 1)
-        sns.boxplot(x='Grupo', y='q_Extensividade', data=df, palette='Set2')
+        sns.boxplot(x='Grupo', y='q_Extensividade', data=df, hue='Grupo', palette='Set2', legend=False)
         plt.title('Comparação: q de Extensividade')
 
         plt.subplot(1, 2, 2)
-        sns.boxplot(x='Grupo', y='q_Gaussian_Fit', data=df, palette='Set1')
+        sns.boxplot(x='Grupo', y='q_Gaussian_Fit', data=df, hue='Grupo', palette='Set1', legend=False)
         plt.title('Comparação: q de Ajuste Gaussiano')
 
         plot_path = os.path.join(self.output_dir, 'comparison_plot.png')

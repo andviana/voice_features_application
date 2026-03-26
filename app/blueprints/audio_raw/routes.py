@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import shutil
 from dataclasses import asdict
 from flask import render_template, jsonify, send_file, Response, stream_with_context
 
@@ -109,5 +110,34 @@ def preprocess_stream(run_id: str):
             yield f"data: {str(line).replace(os.linesep, '')}\n\n"
 
     return Response(stream_with_context(event_stream()), mimetype="text/event-stream")
+
+
+@bp.post("/audio-raw/clear-processing")
+def clear_processing():
+    """Exclui as pastas de processamento: audio_processed, features, optimization_results."""
+    paths_to_clear = [
+        PathUtils.processed_root(),
+        PathUtils.features_root(),
+        PathUtils.data_root() / "optimization_results"
+    ]
+    
+    cleared = []
+    errors = []
+    
+    for p in paths_to_clear:
+        if p.exists():
+            try:
+                shutil.rmtree(p)
+                cleared.append(p.name)
+            except Exception as e:
+                errors.append(f"Erro ao excluir {p.name}: {str(e)}")
+    
+    if errors:
+        return jsonify({"status": "error", "message": "Executado com erros.", "errors": errors}), 500
+        
+    return jsonify({
+        "status": "success", 
+        "message": f"Processamento excluído com sucesso: {', '.join(cleared) if cleared else 'Nenhuma pasta encontrada.'}"
+    })
 
 
