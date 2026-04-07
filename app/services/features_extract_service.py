@@ -125,9 +125,9 @@ def start_extract_features_run(
                     registro.update(d)
                     
                     # --- Inovação: Entropia de Tsallis ---
-                    _, d = extract_tsallis_amplitude_features(y)
+                    _, d = extract_tsallis_amplitude_features(y, q=p.tsallis_q)
                     registro.update(d)
-                    _, d = extract_tsallis_f0_features(y, sr, fmin_hz=fmin, fmax_hz=fmax)
+                    _, d = extract_tsallis_f0_features(y, sr, q=p.tsallis_q, fmin_hz=fmin, fmax_hz=fmax)
                     registro.update(d)
 
                     resultados.append(registro)

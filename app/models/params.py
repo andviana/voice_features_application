@@ -14,5 +14,6 @@ class Params(db.Model):
     target_db = db.Column(db.Float, nullable=False, default=-1.0)
     path_audio = db.Column(db.String(500), nullable=False, default="data/audio_raw")
     path_demographics = db.Column(db.String(500), nullable=False, default="data/metadata")
+    tsallis_q = db.Column(db.Float, nullable=False, default=1.3)
 
 

@@ -19,6 +19,7 @@ class ParamsService:
                 target_db =obj.target_db,
                 path_audio=obj.path_audio,
                 path_demographics=obj.path_demographics,
+                tsallis_q=obj.tsallis_q,
             )
         )
 

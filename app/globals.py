@@ -13,6 +13,7 @@ class ParamsSnapshot:
     target_db: float
     path_audio: str
     path_demographics: str
+    tsallis_q: float
 
 
 class ParamsSingleton:

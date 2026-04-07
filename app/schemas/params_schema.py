@@ -11,6 +11,7 @@ class ParamsSchema(Schema):
     target_db = fields.Float(required=True)
     path_audio = fields.Str(required=True)
     path_demographics = fields.Str(required=True)
+    tsallis_q = fields.Float(required=True)
 
 
 class ParamsUpdateSchema(ParamsSchema):

@@ -19,6 +19,7 @@ def _format_params_for_table(obj):
         {"key": "target_db", "value": f"{obj.target_db:.1f}", "unit": "dB", "desc": "Normalização de loudness alvo"},
         {"key": "path_audio", "value": obj.path_audio, "unit": "", "desc": "Caminho base para áudio"},
         {"key": "path_demographics", "value": obj.path_demographics, "unit": "", "desc": "Caminho base para metadados"},
+        {"key": "tsallis_q", "value": f"{obj.tsallis_q:.3f}", "unit": "", "desc": "Parâmetro q (Entropia de Tsallis)"},
     ]
 
 @bp.get("/params")
@@ -39,6 +40,7 @@ def update_params():
         "target_db": float(request.form["target_db"]),
         "path_audio": request.form["path_audio"],
         "path_demographics": request.form["path_demographics"],
+        "tsallis_q": float(request.form["tsallis_q"]),
     }
     service.update(data)
     flash("Parâmetros atualizados e singleton sincronizado.", "success")
@@ -66,4 +68,5 @@ def params_snapshot():
         "target_db": snap.target_db,
         "path_audio": snap.path_audio,
         "path_demographics": snap.path_demographics,
+        "tsallis_q": snap.tsallis_q,
     })
